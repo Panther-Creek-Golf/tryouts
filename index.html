@@ -1,0 +1,2585 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Panther Creek Golf Tryouts</title>
+<style>
+  :root { --ease: cubic-bezier(0.16, 1, 0.3, 1); }
+  :root[data-theme="light"] {
+    --bg: #f5f8fa; --bg-2: #ffffff; --surface: #ffffff; --surface-2: #eef2f6;
+    --ink: #0a0c0f; --ink-2: #2c3036; --muted: #6b7280;
+    --line: #e3e8ed;
+    --accent: #059669; --accent-2: #06b6d4; --accent-hover: #047857;
+    --accent-soft: #d1fae5; --accent-glow: rgba(16,185,129,0.25);
+    --on-accent: #ffffff;
+    --gold: #f59e0b; --warn: #d97706; --warn-soft: #fef3c7;
+    --err: #dc2626; --err-soft: #fee2e2;
+    --shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06);
+    --shadow-lg: 0 20px 50px rgba(15,23,42,0.12);
+    --blob-1: rgba(16,185,129,0.18); --blob-2: rgba(6,182,212,0.14);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0d12; --bg-2: #11141a; --surface: #161a21; --surface-2: #1f242d;
+    --ink: #ffffff; --ink-2: #d4d4d8; --muted: #8b949e;
+    --line: #262b34;
+    --accent: #10b981; --accent-2: #06b6d4; --accent-hover: #34d399;
+    --accent-soft: #064e3b; --accent-glow: rgba(16,185,129,0.4);
+    --on-accent: #ffffff;
+    --gold: #fbbf24; --warn: #fbbf24; --warn-soft: #3b2a06;
+    --err: #f87171; --err-soft: #3b1212;
+    --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.5);
+    --shadow-lg: 0 20px 50px rgba(0,0,0,0.7);
+    --blob-1: rgba(16,185,129,0.18); --blob-2: rgba(6,182,212,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    line-height: 1.45;
+    transition: background 0.3s, color 0.3s;
+    overflow-x: hidden;
+    position: relative;
+  }
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  body::before {
+    width: 520px; height: 520px;
+    top: -180px; left: -160px;
+    background: var(--blob-1);
+    animation: float1 22s ease-in-out infinite;
+  }
+  body::after {
+    width: 440px; height: 440px;
+    top: 30%; right: -180px;
+    background: var(--blob-2);
+    animation: float2 26s ease-in-out infinite;
+  }
+  @keyframes float1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(60px, 80px) scale(1.08); }
+    66% { transform: translate(-30px, 120px) scale(0.95); }
+  }
+  @keyframes float2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-100px, 60px) scale(1.1); }
+  }
+
+  /* TOP BAR */
+  .topbar {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 18px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: relative;
+    z-index: 10;
+  }
+  .brand {
+    background: transparent; border: none;
+    font-size: 15px; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.3px;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 6px 0;
+    display: flex; align-items: center; gap: 10px;
+    transition: all 0.2s var(--ease);
+    opacity: 0;
+    animation: fadeIn 0.7s var(--ease) 0.1s forwards;
+  }
+  .brand:hover { color: var(--accent); transform: translateX(-1px); }
+  .brand:active { transform: scale(0.98); }
+  .brand-mark {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 12px var(--accent-glow);
+    animation: brandPulse 3s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes brandPulse {
+    0%, 100% { box-shadow: 0 0 12px var(--accent-glow); transform: scale(1); }
+    50% { box-shadow: 0 0 20px var(--accent-glow); transform: scale(1.1); }
+  }
+
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .icon-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+    box-shadow: var(--shadow);
+  }
+  .icon-btn:hover { background: var(--surface-2); transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { width: 17px; height: 17px; color: var(--ink); transition: transform 0.5s var(--ease); }
+  .theme-toggle:hover svg { transform: rotate(20deg); }
+  .theme-toggle.spinning svg { transform: rotate(360deg); }
+  .theme-toggle .icon-dark { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-light { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-dark { display: block; }
+
+  .auth-btn {
+    background: var(--ink); color: var(--bg);
+    border: none;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-weight: 600; font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: var(--shadow);
+    transition: all 0.25s var(--ease);
+  }
+  .auth-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .auth-btn:active { transform: scale(0.96); }
+  .auth-btn.signed-in { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+
+  /* HERO */
+  .hero {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 60px 20px 30px;
+    text-align: center;
+    position: relative;
+    z-index: 5;
+  }
+  .hero h1 {
+    font-size: clamp(42px, 7vw, 64px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 60%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    animation: heroIn 0.9s var(--ease) 0.1s forwards;
+  }
+  .hero .sub {
+    margin-top: 12px;
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: heroIn 0.9s var(--ease) 0.25s forwards;
+  }
+  .hero-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin: 0 8px;
+    vertical-align: middle;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes heroIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { to { opacity: 1; } }
+  @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.6; } }
+
+  /* TABS */
+  .tabs-wrap {
+    max-width: 760px;
+    margin: 30px auto 0;
+    padding: 8px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: linear-gradient(180deg, var(--bg) 60%, transparent);
+  }
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 5px;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    animation: fadeIn 0.6s var(--ease) 0.3s forwards;
+  }
+  .tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 11px 14px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 10px;
+    transition: all 0.35s var(--ease);
+    white-space: nowrap;
+    min-width: max-content;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: var(--on-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+
+  /* MAIN */
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 20px 100px;
+    position: relative;
+    z-index: 5;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel.active > * { opacity: 0; animation: panelIn 0.55s var(--ease) both; }
+  .panel.active > *:nth-child(1) { animation-delay: 0.02s; }
+  .panel.active > *:nth-child(2) { animation-delay: 0.08s; }
+  .panel.active > *:nth-child(3) { animation-delay: 0.14s; }
+  .panel.active > *:nth-child(4) { animation-delay: 0.20s; }
+  .panel.active > *:nth-child(5) { animation-delay: 0.26s; }
+  .panel.active > *:nth-child(6) { animation-delay: 0.32s; }
+  .panel.active > *:nth-child(7) { animation-delay: 0.38s; }
+  .panel.active > *:nth-child(8) { animation-delay: 0.44s; }
+  .panel.active > *:nth-child(9) { animation-delay: 0.50s; }
+  .panel.active > *:nth-child(10) { animation-delay: 0.56s; }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.8px;
+    margin-bottom: 6px;
+    padding: 0 4px;
+  }
+  .lede { font-size: 15px; color: var(--muted); margin-bottom: 22px; padding: 0 4px; }
+
+  /* HOME */
+  .home-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 540px) { .home-tiles { grid-template-columns: 1fr; } }
+  .home-tile {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 28px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--ink);
+    text-align: left;
+    box-shadow: var(--shadow);
+    transition: all 0.4s var(--ease);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 170px;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .home-tile::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at center, var(--accent-glow), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .home-tile:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--accent); }
+  .home-tile:hover::before { opacity: 0.4; }
+  .home-tile:active { transform: translateY(-1px) scale(0.99); }
+  .home-tile.primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 50%, var(--accent-2) 100%);
+    background-size: 200% 200%;
+    color: var(--on-accent);
+    border-color: transparent;
+    animation: gradientShift 8s ease-in-out infinite;
+    box-shadow: 0 10px 30px var(--accent-glow);
+  }
+  .home-tile.primary:hover { box-shadow: 0 20px 50px var(--accent-glow); border-color: transparent; }
+  @keyframes gradientShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  .home-tile.primary .tile-label, .home-tile.primary .tile-arrow { color: var(--on-accent); }
+  .home-tile.primary .tile-sub { color: rgba(255,255,255,0.9); }
+  .home-tile .tile-label { font-size: 24px; font-weight: 800; color: var(--ink); letter-spacing: -0.6px; line-height: 1.05; }
+  .home-tile .tile-sub { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .home-tile .tile-arrow { font-size: 24px; color: var(--muted); align-self: flex-end; margin-top: auto; transition: transform 0.3s var(--ease); }
+  .home-tile:hover .tile-arrow { transform: translateX(4px); }
+  .home-tile.primary .tile-arrow { color: var(--on-accent); }
+
+  /* GROUPS */
+  .group-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 0 18px 8px;
+    margin-top: 24px;
+  }
+  .group {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+  }
+  .row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    gap: 14px;
+    transition: background 0.2s;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: var(--surface-2); }
+  .row .label { font-size: 15px; color: var(--ink); font-weight: 500; }
+  .row .value { font-size: 15px; color: var(--muted); font-weight: 600; text-align: right; }
+  .row.feature .value { font-size: 18px; color: var(--ink); font-weight: 800; letter-spacing: -0.3px; }
+  .row.feature .value .accent-text {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .row .code {
+    background: var(--accent-soft); color: var(--accent);
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-weight: 700; font-size: 14px; letter-spacing: 1.5px;
+  }
+  :root[data-theme="dark"] .row .code { color: var(--accent-hover); }
+
+  /* ADJUSTMENT BARS */
+  .adj-row {
+    display: grid;
+    grid-template-columns: 1fr 120px 40px;
+    align-items: center; gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .adj-row:last-child { border-bottom: none; }
+  .adj-row .label { font-size: 15px; color: var(--ink); font-weight: 500; }
+  .adj-bar-track {
+    height: 8px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .adj-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 999px;
+    transform-origin: left;
+    animation: barGrow 0.9s var(--ease) both;
+    animation-delay: var(--bar-delay, 0.3s);
+  }
+  @keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .adj-num { font-size: 19px; font-weight: 800; color: var(--accent); text-align: right; letter-spacing: -0.5px; }
+
+  /* LEADERBOARD */
+  .lb-item { border-bottom: 1px solid var(--line); }
+  .lb-item:last-child { border-bottom: none; }
+  .lb-row {
+    display: grid;
+    grid-template-columns: 50px 1fr auto 24px;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+    position: relative;
+  }
+  .lb-row:hover { background: var(--surface-2); }
+  .lb-rank {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.8px;
+    line-height: 1;
+  }
+  .lb-item.first .lb-rank {
+    background: linear-gradient(135deg, var(--gold), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .lb-item.first .lb-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--gold), var(--accent));
+    border-radius: 0 4px 4px 0;
+  }
+  .lb-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .lb-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+  .lb-meta { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .lb-total {
+    font-size: 26px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .lb-chevron {
+    color: var(--muted);
+    font-size: 16px;
+    transition: transform 0.35s var(--ease);
+  }
+  .lb-item.expanded .lb-chevron { transform: rotate(90deg); }
+  .lb-rounds {
+    max-height: 0;
+    overflow: hidden;
+    background: var(--surface-2);
+    transition: max-height 0.5s var(--ease);
+  }
+  .lb-item.expanded .lb-rounds {
+    max-height: 2000px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ROUND CARDS */
+  .round {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px 14px 64px;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.2s;
+  }
+  .round:last-child { border-bottom: none; }
+  .round-info { min-width: 0; }
+  .round-event {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .round-event .event-name {
+    font-weight: 700;
+    color: var(--ink);
+    font-size: 15px;
+    letter-spacing: -0.2px;
+  }
+  .round-link {
+    display: inline-grid;
+    place-items: center;
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    transition: all 0.2s var(--ease);
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  :root[data-theme="dark"] .round-link { color: var(--accent-hover); }
+  .round-link svg { width: 14px; height: 14px; }
+  .round-link:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+  }
+  .round-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .round-sub .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+  .round-stats {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .stat { text-align: right; min-width: 44px; }
+  .stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-value.adj {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-value.muted { color: var(--muted); -webkit-text-fill-color: var(--muted); background: none; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge.verified { background: var(--accent-soft); color: var(--accent); }
+  :root[data-theme="dark"] .badge.verified { color: var(--accent-hover); }
+  .badge.pending { background: var(--warn-soft); color: var(--warn); }
+
+  .round-actions { display: flex; gap: 6px; margin-left: 10px; }
+  .icon-action {
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .icon-action:hover { color: var(--err); border-color: var(--err); }
+  .icon-action svg { width: 14px; height: 14px; }
+
+  .lb-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  /* CONTACT */
+  .contact {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 34px 20px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .contact::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at top right, var(--accent-glow), transparent 60%);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .contact .name { font-size: 24px; font-weight: 800; color: var(--ink); margin-bottom: 6px; letter-spacing: -0.5px; position: relative; }
+  .contact .title { font-size: 14px; color: var(--muted); margin-bottom: 22px; position: relative; }
+  .contact a.email-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: var(--on-accent);
+    padding: 13px 28px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: 0 8px 20px var(--accent-glow);
+    transition: all 0.25s var(--ease);
+    position: relative;
+  }
+  .contact a.email-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px var(--accent-glow); }
+
+  .link-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.2s;
+  }
+  .link-row:last-child { border-bottom: none; }
+  .link-row:hover { background: var(--surface-2); }
+  .link-row .arrow { color: var(--muted); transition: transform 0.3s var(--ease); }
+  .link-row:hover .arrow { transform: translateX(3px) translateY(-3px); }
+
+  /* MY SCORES SUMMARY */
+  .summary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 50%, var(--accent-2) 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 10s ease-in-out infinite;
+    color: var(--on-accent);
+    border-radius: 22px;
+    padding: 28px;
+    margin-bottom: 18px;
+    box-shadow: 0 15px 40px var(--accent-glow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .summary::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -20%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15), transparent);
+    border-radius: 50%;
+  }
+  .summary > * { position: relative; }
+  .summary .summary-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 2px;
+    opacity: 0.9;
+    margin-bottom: 6px;
+  }
+  .summary .summary-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .summary .summary-sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .summary .summary-stats { text-align: right; }
+  .summary .summary-stats .big {
+    font-size: 56px; font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary .summary-stats .small {
+    font-size: 11px;
+    opacity: 0.95;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+  }
+
+  .actions { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
+  button.primary {
+    flex: 1; min-width: 140px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: var(--on-accent);
+    border: none;
+    padding: 15px;
+    border-radius: 14px;
+    font-weight: 700; font-size: 15px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.25s var(--ease);
+    box-shadow: 0 6px 18px var(--accent-glow);
+    position: relative;
+    overflow: hidden;
+  }
+  button.primary::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+    transition: left 0.6s;
+  }
+  button.primary:hover::after { left: 100%; }
+  button.primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px var(--accent-glow); }
+  button.primary:active { transform: scale(0.98); }
+  button.primary:disabled { opacity: 0.6; cursor: wait; transform: none; }
+  button.secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 15px 18px;
+    border-radius: 14px;
+    font-weight: 600; font-size: 15px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button.secondary:hover { background: var(--surface-2); transform: translateY(-1px); }
+
+  /* GATE */
+  .gate {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 60px 30px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .gate::before {
+    content: '';
+    position: absolute;
+    top: -100px; left: 50%;
+    transform: translateX(-50%);
+    width: 400px; height: 200px;
+    background: radial-gradient(ellipse, var(--accent-glow), transparent);
+    pointer-events: none;
+  }
+  .gate h3 { font-size: 24px; font-weight: 800; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.5px; position: relative; }
+  .gate p { color: var(--muted); margin-bottom: 26px; font-size: 15px; position: relative; }
+  .gate .gate-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: var(--on-accent);
+    border: none;
+    padding: 15px 32px;
+    border-radius: 12px;
+    font-weight: 700; font-size: 15px;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 8px 20px var(--accent-glow);
+    transition: all 0.25s var(--ease);
+    position: relative;
+  }
+  .gate .gate-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px var(--accent-glow); }
+
+  /* MODAL */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 100;
+    align-items: center; justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+  }
+  .modal-backdrop.open { display: flex; animation: fadeIn 0.25s ease both; }
+  .modal {
+    background: var(--surface);
+    border-radius: 26px;
+    padding: 0;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--line);
+    animation: rise 0.4s var(--ease);
+    overflow: hidden;
+    position: relative;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+  .modal-glow {
+    position: absolute;
+    top: -120px; left: 50%;
+    transform: translateX(-50%);
+    width: 460px; height: 280px;
+    background: radial-gradient(ellipse at center, var(--accent-glow), transparent 60%);
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  .modal-inner { padding: 30px; position: relative; }
+  @keyframes rise { from { transform: translateY(30px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal-mark {
+    width: 50px; height: 50px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-radius: 16px;
+    display: grid; place-items: center;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 25px var(--accent-glow);
+    color: white;
+  }
+  .modal-mark svg { width: 24px; height: 24px; }
+  .modal h2 { font-size: 24px; margin-bottom: 4px; padding: 0; }
+  .modal p.sub { font-size: 14px; color: var(--muted); margin-bottom: 22px; }
+
+  .modal-modes {
+    display: flex;
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 2px;
+    margin-bottom: 20px;
+  }
+  .modal-mode {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 9px;
+    transition: all 0.3s var(--ease);
+  }
+  .modal-mode.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .modal-field input,
+  .modal-field select {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    font-size: 16px;
+    background: var(--bg-2);
+    color: var(--ink);
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .modal-field input:focus, .modal-field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+  .modal-field .field-help { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 44px; }
+  .password-toggle {
+    position: absolute;
+    top: 50%; right: 8px;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    border-radius: 6px;
+    display: grid; place-items: center;
+  }
+  .password-toggle:hover { color: var(--ink); background: var(--surface-2); }
+  .password-toggle svg { width: 18px; height: 18px; }
+
+  .modal-error {
+    background: var(--err-soft); color: var(--err);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: none;
+    animation: shake 0.4s var(--ease);
+  }
+  .modal-error.show { display: block; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
+  }
+
+  .signup-only, .signin-only, .role-player, .role-parent, .role-coach { display: none; }
+  .modal[data-mode="signup"] .signup-only { display: block; }
+  .modal[data-mode="signin"] .signin-only { display: block; }
+  .modal[data-mode="signup"][data-role="Player"] .role-player { display: block; }
+  .modal[data-mode="signup"][data-role="Parent"] .role-parent { display: block; }
+  .modal[data-mode="signup"][data-role="Coach"] .role-coach { display: block; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 8px;
+  }
+
+  /* USER MENU */
+  .user-menu {
+    position: absolute;
+    top: 50px; right: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 6px;
+    box-shadow: var(--shadow-lg);
+    min-width: 240px;
+    display: none;
+    z-index: 60;
+    animation: rise 0.25s var(--ease);
+  }
+  .user-menu.open { display: block; }
+  .user-menu .menu-info {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 4px;
+  }
+  .user-menu .menu-info .menu-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .user-menu .menu-info .menu-role { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .user-menu button {
+    width: 100%; text-align: left;
+    background: transparent; border: none;
+    padding: 11px 14px;
+    color: var(--ink); font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .user-menu button:hover { background: var(--surface-2); }
+  .user-menu button.danger { color: #ef4444; }
+  .auth-wrap { position: relative; }
+
+  /* SCORE STEPPER */
+  .score-input {
+    background: linear-gradient(135deg, var(--surface-2), var(--bg-2));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 16px 18px;
+    margin-bottom: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-input::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center top, var(--accent-glow), transparent 70%);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .score-input > * { position: relative; }
+  .score-input .score-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 2px;
+    font-weight: 700;
+  }
+  .score-row {
+    display: flex; align-items: center; gap: 14px;
+    justify-content: center;
+    margin: 8px 0 4px;
+  }
+  .score-row .step {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    color: var(--ink);
+    font-size: 24px; font-weight: 600;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all 0.2s var(--ease);
+    font-family: inherit;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .score-row .step:hover { background: var(--accent); color: white; border-color: var(--accent); transform: scale(1.05); }
+  .score-row .step:active { transform: scale(0.92); }
+  .score-row .score-num {
+    font-size: 64px;
+    font-weight: 800;
+    text-align: center;
+    width: 140px;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    letter-spacing: -3px;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    padding: 0;
+    line-height: 1;
+  }
+  .score-row .score-num::-webkit-outer-spin-button,
+  .score-row .score-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .score-row .score-num { -moz-appearance: textfield; }
+  .score-row .score-num:focus { outline: none; }
+  .adj-preview {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 6px 16px;
+    margin-top: 6px;
+    border: 1px solid var(--line);
+    transition: all 0.3s var(--ease);
+  }
+  .adj-preview-label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 1.5px; font-weight: 700; }
+  .adj-preview-value {
+    font-size: 22px; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
+    transition: transform 0.3s var(--ease);
+    min-width: 30px; text-align: center;
+  }
+  .adj-preview.pop .adj-preview-value { transform: scale(1.2); }
+
+  /* FAB */
+  .fab {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover), var(--accent-2));
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease-in-out infinite, fabIn 0.5s var(--ease);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 30px var(--accent-glow), 0 4px 12px rgba(0,0,0,0.18);
+    display: none;
+    place-items: center;
+    z-index: 40;
+    transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+  }
+  .fab.visible { display: grid; }
+  .fab:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 15px 40px var(--accent-glow), 0 6px 16px rgba(0,0,0,0.22); }
+  .fab:active { transform: scale(0.94); }
+  .fab svg { width: 26px; height: 26px; }
+  @keyframes fabIn { from { transform: scale(0) translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  footer {
+    max-width: 760px;
+    margin: 30px auto 0;
+    padding: 24px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    position: relative;
+    z-index: 5;
+  }
+
+  /* TRYOUT SIGNUP */
+  .tryout-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 540px) { .tryout-cards { grid-template-columns: 1fr; } }
+  .tryout-card {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s var(--ease);
+  }
+  .tryout-card.registered {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, var(--accent-soft) 0%, var(--surface) 70%);
+    box-shadow: 0 8px 24px var(--accent-glow);
+    transform: translateY(-2px);
+  }
+  :root[data-theme="dark"] .tryout-card.registered {
+    background: linear-gradient(135deg, var(--accent-soft) 0%, var(--surface) 80%);
+  }
+  .tryout-card.full { opacity: 0.65; }
+  .tryout-badge {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: white;
+    border-radius: 999px;
+    padding: 4px 10px 4px 8px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px var(--accent-glow);
+    animation: badgePop 0.4s var(--ease);
+  }
+  .tryout-badge svg { width: 11px; height: 11px; }
+  @keyframes badgePop {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  .tryout-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .tryout-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 2px;
+    font-weight: 700;
+  }
+  .tryout-card.registered .tryout-label { color: var(--accent); }
+  .tryout-status {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .tryout-date {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+    margin-bottom: 14px;
+    line-height: 1.1;
+  }
+  .tryout-progress {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .tryout-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 999px;
+    transition: width 0.7s var(--ease);
+  }
+  .tryout-action {
+    width: 100%;
+    padding: 12px;
+    border-radius: 11px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s var(--ease);
+  }
+  .tryout-action.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: white;
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+  .tryout-action.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px var(--accent-glow);
+  }
+  .tryout-action.cancel {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .tryout-action.cancel:hover {
+    background: var(--err-soft);
+    color: var(--err);
+  }
+  .tryout-action:disabled {
+    background: var(--surface-2);
+    color: var(--muted);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* SUMMER TOURNAMENT CARD */
+  .summer-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .summer-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, var(--accent-glow), transparent 60%);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .summer-card > * { position: relative; }
+  .summer-card h4 {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 6px;
+    letter-spacing: -0.3px;
+  }
+  .summer-card p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .summer-card .primary {
+    flex: none;
+    padding: 13px 22px;
+    font-size: 14px;
+  }
+
+  /* Value small */
+  .row .value small {
+    display: block;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  /* COACH CARDS (Contact tab) */
+  .coach-cards {
+    display: grid;
+    gap: 14px;
+  }
+  .coach-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 26px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s var(--ease);
+  }
+  .coach-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .coach-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, var(--accent-glow), transparent 60%);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .coach-card > * { position: relative; }
+  .coach-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .coach-avatar {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    display: grid; place-items: center;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    box-shadow: 0 6px 20px var(--accent-glow);
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .coach-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+  .coach-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.4px;
+    line-height: 1.1;
+  }
+  .coach-role {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .coach-contacts {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .coach-btn {
+    flex: 1;
+    min-width: 140px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 18px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.25s var(--ease);
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+  }
+  .coach-btn.email {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    color: var(--on-accent);
+    box-shadow: 0 6px 18px var(--accent-glow);
+  }
+  .coach-btn.email:hover { transform: translateY(-2px); box-shadow: 0 10px 25px var(--accent-glow); }
+  .coach-btn.ig {
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .coach-btn.ig:hover { background: var(--bg-2); transform: translateY(-1px); }
+  .coach-btn svg { width: 16px; height: 16px; }
+
+  /* TRYOUT SIGNUP LIST (public) */
+  .signup-lists {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 540px) { .signup-lists { grid-template-columns: 1fr; } }
+  .signup-list {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .signup-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .signup-list-header .title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    font-weight: 700;
+  }
+  .signup-list-header .count {
+    background: var(--accent);
+    color: white;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .signup-names {
+    list-style: none;
+    margin: 0; padding: 0;
+  }
+  .signup-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 600;
+    animation: fadeInUp 0.3s var(--ease) both;
+  }
+  .signup-name:last-child { border-bottom: none; }
+  .signup-name .signup-num {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 13px;
+    margin-right: 10px;
+    min-width: 22px;
+    text-align: right;
+  }
+  .signup-name .signup-text { flex: 1; min-width: 0; }
+  .signup-name.empty {
+    color: var(--muted);
+    font-style: italic;
+    font-weight: 500;
+    padding: 18px 16px;
+    text-align: center;
+    justify-content: center;
+  }
+  .signup-remove {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+    transition: all 0.2s;
+  }
+  .signup-remove:hover { background: var(--err-soft); color: var(--err); }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* COACH BADGE */
+  .coach-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* MY SCORES — coach view */
+  .coach-dash-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 26px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .coach-dash-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top, var(--accent-glow), transparent 60%);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .coach-dash-card > * { position: relative; }
+  .coach-dash-card h3 {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: -0.4px;
+  }
+  .coach-dash-card p { color: var(--muted); font-size: 14px; }
+
+  /* Submitter line on rounds */
+  .round-submitter {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="brand" id="brandBtn" aria-label="Go to home">
+    <span class="brand-mark"></span>
+    Panther Creek Golf · Tryouts
+  </button>
+  <div class="topbar-actions">
+    <div class="auth-wrap">
+      <button class="auth-btn" id="authBtn">Sign In</button>
+      <div class="user-menu" id="userMenu">
+        <div class="menu-info">
+          <div class="menu-name" id="menuName"></div>
+          <div class="menu-role" id="menuRole"></div>
+        </div>
+        <button id="goMyScores">My Scores</button>
+        <button id="signOutBtn" class="danger">Sign Out</button>
+      </div>
+    </div>
+    <button class="icon-btn theme-toggle" id="themeToggle" aria-label="Toggle theme">
+      <svg class="icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+      <svg class="icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>Panther Creek Golf</h1>
+  <div class="sub">Tryouts <span class="hero-dot"></span> 2026 Season</div>
+</div>
+
+<div class="tabs-wrap">
+  <nav class="tabs">
+    <button class="tab active" data-tab="leaderboard">Leaderboard</button>
+    <button class="tab" data-tab="tryouts">Tryouts</button>
+    <button class="tab" data-tab="contact">Contact</button>
+    <button class="tab" data-tab="myscores" id="myScoresTab" style="display:none;">My Scores</button>
+  </nav>
+</div>
+
+<main>
+  <!-- LEADERBOARD -->
+  <div class="panel active" id="panel-leaderboard">
+    <h2>Leaderboard</h2>
+    <p class="lede">Ranked by total strokes off. Tap a player to see their rounds.</p>
+    <div class="group" id="leaderboardWrap">
+      <div class="lb-empty">No scores submitted yet.</div>
+    </div>
+  </div>
+
+  <!-- TRYOUTS -->
+  <div class="panel" id="panel-tryouts">
+    <h2>Tryouts</h2>
+    <p class="lede">Everything you need for the 2026 season — follow the steps below.</p>
+
+    <div class="group-header">Step 1 · Join Our Group</div>
+    <div class="group">
+      <div class="row">
+        <span class="label">Download SportsYou and join this code:</span>
+        <span class="value"><span class="code">8WW7-2NDC</span></span>
+      </div>
+    </div>
+
+    <div class="group-header">Step 2 · Pick Your Tryout Date</div>
+    <div class="tryout-cards" id="tryoutCards"></div>
+
+    <div class="group-header">Registered Players</div>
+    <div class="signup-lists" id="signupLists"></div>
+
+    <div class="group-header">Format</div>
+    <div class="group">
+      <div class="row"><span class="label">Day 1</span><span class="value">18 holes at Ridgeview Ranch GC <small>Walking</small></span></div>
+      <div class="row"><span class="label">Day 2</span><span class="value">Skills evaluation at PGA <small>10 holes at The Swing · Putting · Chipping</small></span></div>
+    </div>
+
+    <div class="group-header">Cost</div>
+    <div class="group">
+      <div class="row feature"><span class="label">Total</span><span class="value">$40</span></div>
+      <div class="row"><span class="label">Ridgeview Ranch GC · 18 holes</span><span class="value">$20</span></div>
+      <div class="row"><span class="label">The Swing · 10 holes</span><span class="value">$20</span></div>
+    </div>
+
+    <div class="group-header">Team Selection</div>
+    <div class="group">
+      <div class="row"><span class="label">Boys roster</span><span class="value">Max 12</span></div>
+      <div class="row"><span class="label">Girls roster</span><span class="value">Max 12</span></div>
+    </div>
+
+    <div class="group-header">Summer Tournaments · Optional but Encouraged</div>
+    <div class="summer-card">
+      <h4>Lower your tryout score</h4>
+      <p>Play summer tournaments to earn stroke adjustments. Each verified round shaves strokes off your Ridgeview Ranch GC tryout score. Only affects making the team, not Varsity vs. JV.</p>
+      <button type="button" class="primary" id="submitFromTryout">Submit a Tournament Score</button>
+    </div>
+
+    <div class="group-header">Score Adjustments · Per Round</div>
+    <div class="group">
+      <div class="adj-row" style="--bar-delay: 0.35s;"><span class="label">Even par or better</span><div class="adj-bar-track"><div class="adj-bar-fill" style="width: 100%;"></div></div><span class="adj-num">−5</span></div>
+      <div class="adj-row" style="--bar-delay: 0.45s;"><span class="label">73 – 79</span><div class="adj-bar-track"><div class="adj-bar-fill" style="width: 80%;"></div></div><span class="adj-num">−4</span></div>
+      <div class="adj-row" style="--bar-delay: 0.55s;"><span class="label">80 – 89</span><div class="adj-bar-track"><div class="adj-bar-fill" style="width: 60%;"></div></div><span class="adj-num">−3</span></div>
+      <div class="adj-row" style="--bar-delay: 0.65s;"><span class="label">90 – 99</span><div class="adj-bar-track"><div class="adj-bar-fill" style="width: 40%;"></div></div><span class="adj-num">−2</span></div>
+      <div class="adj-row" style="--bar-delay: 0.75s;"><span class="label">100+</span><div class="adj-bar-track"><div class="adj-bar-fill" style="width: 20%;"></div></div><span class="adj-num">−1</span></div>
+    </div>
+
+  </div>
+
+  <!-- CONTACT -->
+  <div class="panel" id="panel-contact">
+    <h2>Contact</h2>
+    <p class="lede">Reach out to our coaching staff anytime.</p>
+    <div class="coach-cards">
+      <div class="coach-card">
+        <div class="coach-head">
+          <div class="coach-avatar">
+            <img src="https://unavatar.io/instagram/tylergarrigus" alt="Tyler Garrigus" onerror="this.remove()" />
+            TG
+          </div>
+          <div>
+            <div class="coach-name">Tyler Garrigus</div>
+            <div class="coach-role">Head Coach</div>
+          </div>
+        </div>
+        <div class="coach-contacts">
+          <a class="coach-btn email" href="mailto:garrigust@friscoisd.org">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Email
+          </a>
+          <a class="coach-btn ig" href="https://instagram.com/tylergarrigus" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+            </svg>
+            @tylergarrigus
+          </a>
+        </div>
+      </div>
+
+      <div class="coach-card">
+        <div class="coach-head">
+          <div class="coach-avatar">JG</div>
+          <div>
+            <div class="coach-name">Johnathon Griffin</div>
+            <div class="coach-role">Assistant Coach</div>
+          </div>
+        </div>
+        <div class="coach-contacts">
+          <a class="coach-btn email" href="mailto:griffinjo@friscoisd.org">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Email
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY SCORES -->
+  <div class="panel" id="panel-myscores">
+    <div id="myScoresContent"></div>
+  </div>
+</main>
+
+<footer>Panther Creek HS · Frisco, TX</footer>
+
+<!-- AUTH MODAL -->
+<div class="modal-backdrop" id="authModal">
+  <div class="modal" id="authModalBody" data-mode="signin" data-role="Player">
+    <div class="modal-glow"></div>
+    <div class="modal-inner">
+      <div class="modal-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <h2 id="modalTitle">Welcome back</h2>
+      <p class="sub" id="modalSub">Sign in to view your scores and submit rounds.</p>
+
+      <div class="modal-modes">
+        <button type="button" class="modal-mode active" data-mode="signin">Sign In</button>
+        <button type="button" class="modal-mode" data-mode="signup">Create Account</button>
+      </div>
+
+      <form id="authForm" autocomplete="on">
+        <div class="modal-field signup-only">
+          <label for="authRole">I am the…</label>
+          <select id="authRole" name="role">
+            <option value="Player">Player</option>
+            <option value="Parent">Parent</option>
+            <option value="Coach">Coach</option>
+          </select>
+        </div>
+
+        <div class="modal-field role-player">
+          <label for="authPlayerName">Your Full Name</label>
+          <input id="authPlayerName" name="name" type="text" placeholder="First &amp; last name" autocomplete="name" />
+        </div>
+
+        <div class="modal-field role-parent">
+          <label for="authParentPlayer">Your Player</label>
+          <select id="authParentPlayer"></select>
+          <div class="field-help" id="parentHelp"></div>
+        </div>
+
+        <div class="modal-field role-coach">
+          <label for="authCoachName">Your Full Name</label>
+          <input id="authCoachName" type="text" placeholder="First &amp; last name" />
+          <div class="field-help">Coach access requires an approved Frisco ISD email below.</div>
+        </div>
+
+        <div class="modal-field">
+          <label for="authEmail">Email</label>
+          <input id="authEmail" name="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="modal-field">
+          <label for="authPassword">Password</label>
+          <div class="password-wrap">
+            <input id="authPassword" name="password" type="password" required placeholder="At least 6 characters" autocomplete="current-password" minlength="6" />
+            <button type="button" class="password-toggle" id="pwToggle" aria-label="Show password">
+              <svg id="pwEye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="pwEyeOff" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-error" id="authError"></div>
+
+        <div class="modal-actions">
+          <button type="submit" class="primary" id="authSubmit">Sign In</button>
+          <button type="button" class="modal-close" id="cancelAuth">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- SUBMIT MODAL -->
+<div class="modal-backdrop" id="submitModal">
+  <div class="modal">
+    <div class="modal-glow"></div>
+    <div class="modal-inner">
+      <div class="modal-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </div>
+      <h2 id="submitTitle">Submit a Round</h2>
+      <p class="sub">Enter your 18-hole score. Adjustment updates instantly.</p>
+      <form id="submitForm">
+        <div class="score-input">
+          <div class="score-label">Your 18-Hole Score</div>
+          <div class="score-row">
+            <button type="button" class="step" data-step="-1" aria-label="Decrease">−</button>
+            <input id="subScore" class="score-num" type="number" min="50" max="200" required inputmode="numeric" />
+            <button type="button" class="step" data-step="1" aria-label="Increase">+</button>
+          </div>
+          <div class="adj-preview" id="adjPreview">
+            <span class="adj-preview-label">Tryout Adjustment</span>
+            <span class="adj-preview-value" id="adjPreviewValue">—</span>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label for="subDate">Date</label>
+          <input id="subDate" type="date" required />
+        </div>
+        <div class="modal-field">
+          <label for="subTournament">Event / Tournament</label>
+          <input id="subTournament" type="text" required placeholder="e.g. AJGA Frisco Junior" />
+        </div>
+        <div class="modal-field">
+          <label for="subUrl">Tournament Leaderboard Link</label>
+          <input id="subUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/..." />
+          <div class="field-help">A public link we can use to verify your name &amp; score.</div>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="primary" id="submitScoreBtn">Submit &amp; Verify</button>
+          <button type="button" class="modal-close" id="cancelSubmit">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fabSubmit" aria-label="Submit a round">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v14M5 12h14"/>
+  </svg>
+</button>
+
+<script>
+  // THEME
+  const root = document.documentElement;
+  const storedTheme = localStorage.getItem('pcg-theme');
+  if (storedTheme) root.setAttribute('data-theme', storedTheme);
+  else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    root.setAttribute('data-theme', 'dark');
+  }
+  const themeToggle = document.getElementById('themeToggle');
+  themeToggle.addEventListener('click', () => {
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('pcg-theme', next);
+    themeToggle.classList.add('spinning');
+    setTimeout(() => themeToggle.classList.remove('spinning'), 500);
+  });
+
+  // TABS
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (name === 'leaderboard') setTimeout(animateLeaderboardNumbers, 300);
+    if (name === 'myscores') setTimeout(animateMyScoresNumber, 300);
+    if (name === 'tryouts') renderTryouts();
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+  document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+
+  document.getElementById('brandBtn').addEventListener('click', () => {
+    showTab('leaderboard');
+  });
+
+  // COUNT-UP
+  function animateCount(el, target, duration = 900) {
+    if (target === 0) { el.textContent = '0'; return; }
+    const t0 = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(target * eased);
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function animateLeaderboardNumbers() {
+    document.querySelectorAll('.lb-total[data-target]').forEach(el => animateCount(el, parseFloat(el.dataset.target)));
+  }
+  function animateMyScoresNumber() {
+    const el = document.querySelector('.summary-stats .big[data-target]');
+    if (el) animateCount(el, parseFloat(el.dataset.target));
+  }
+
+  // USERS
+  const USERS_KEY = 'pcg-users-v1';
+  const AUTH_KEY = 'pcg-auth-v3';
+  const APPROVED_COACH_EMAILS = ['garrigust@friscoisd.org', 'griffinjo@friscoisd.org'];
+
+  function loadUsers() { try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch (e) { return []; } }
+  function saveUsers(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+
+  async function hashPassword(password) {
+    const data = new TextEncoder().encode('pcg-salt-2026:' + password);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function createAccount({ role, name, coachName, playerLink, email, password }) {
+    const users = loadUsers();
+    const emailLower = email.toLowerCase();
+    if (users.find(u => u.email.toLowerCase() === emailLower)) {
+      return { ok: false, reason: 'An account with this email already exists.' };
+    }
+    if (password.length < 6) return { ok: false, reason: 'Password must be at least 6 characters.' };
+
+    let playerName;
+    let approved = true;
+    if (role === 'Player') {
+      if (!name || name.length < 2) return { ok: false, reason: 'Please enter your full name.' };
+      const existing = users.find(u => u.role === 'Player' && u.playerName.toLowerCase() === name.toLowerCase());
+      if (existing) return { ok: false, reason: 'A player account with that name already exists.' };
+      playerName = name.trim();
+    } else if (role === 'Parent') {
+      if (!playerLink) return { ok: false, reason: 'Please select your player.' };
+      const player = users.find(u => u.id === parseInt(playerLink, 10));
+      if (!player) return { ok: false, reason: 'Selected player not found.' };
+      playerName = player.playerName;
+    } else if (role === 'Coach') {
+      if (!APPROVED_COACH_EMAILS.includes(emailLower)) {
+        return { ok: false, reason: 'Coach access requires an approved Frisco ISD email. Contact the head coach.' };
+      }
+      if (!coachName || coachName.length < 2) return { ok: false, reason: 'Please enter your full name.' };
+      playerName = coachName.trim();
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = { id: Date.now(), role, playerName, email: emailLower, passwordHash, approved };
+    users.push(user);
+    saveUsers(users);
+    return { ok: true, user };
+  }
+
+  async function authenticate({ email, password }) {
+    const users = loadUsers();
+    const hash = await hashPassword(password);
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === hash);
+    if (!user) return { ok: false, reason: 'Email or password is incorrect.' };
+    return { ok: true, user };
+  }
+
+  // SESSION
+  let auth = null;
+  try { auth = JSON.parse(localStorage.getItem(AUTH_KEY)); } catch (e) {}
+  const authBtn = document.getElementById('authBtn');
+  const userMenu = document.getElementById('userMenu');
+  const myScoresTab = document.getElementById('myScoresTab');
+
+  function renderAuthUI() {
+    if (auth) {
+      authBtn.textContent = 'Hi, ' + auth.playerName.split(' ')[0];
+      authBtn.classList.add('signed-in');
+      const namePrefix = auth.role === 'Parent' ? 'Parent of ' : '';
+      const coachBadge = auth.role === 'Coach' ? ' <span class="coach-pill">Coach</span>' : '';
+      document.getElementById('menuName').innerHTML = escapeHtml(namePrefix + auth.playerName) + coachBadge;
+      document.getElementById('menuRole').textContent = auth.email;
+      myScoresTab.style.display = '';
+      myScoresTab.textContent = isCoach() ? 'Dashboard' : 'My Scores';
+      // Coaches submit on behalf of players via leaderboard edits — hide their FAB
+      const fab = document.getElementById('fabSubmit');
+      if (isCoach()) fab.classList.remove('visible'); else fab.classList.add('visible');
+    } else {
+      authBtn.textContent = 'Sign In';
+      authBtn.classList.remove('signed-in');
+      myScoresTab.style.display = 'none';
+      userMenu.classList.remove('open');
+      document.getElementById('fabSubmit').classList.remove('visible');
+    }
+    renderMyScores();
+    renderTryouts();
+  }
+
+  authBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (auth) userMenu.classList.toggle('open');
+    else openAuthModal();
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.auth-wrap')) userMenu.classList.remove('open'); });
+  document.getElementById('goMyScores').addEventListener('click', () => { userMenu.classList.remove('open'); showTab('myscores'); });
+  document.getElementById('signOutBtn').addEventListener('click', () => {
+    auth = null;
+    localStorage.removeItem(AUTH_KEY);
+    renderAuthUI();
+    showTab('leaderboard');
+  });
+
+  // AUTH MODAL
+  const authModal = document.getElementById('authModal');
+  const authModalBody = document.getElementById('authModalBody');
+  const authError = document.getElementById('authError');
+  const roleSelect = document.getElementById('authRole');
+  const parentPlayerSelect = document.getElementById('authParentPlayer');
+  const parentHelp = document.getElementById('parentHelp');
+
+  function refreshParentPlayerOptions() {
+    const players = loadUsers().filter(u => u.role === 'Player');
+    if (players.length === 0) {
+      parentPlayerSelect.innerHTML = '<option value="">— No players have signed up yet —</option>';
+      parentPlayerSelect.disabled = true;
+      parentHelp.textContent = 'Your player must create their account first. Then come back and link.';
+    } else {
+      parentPlayerSelect.innerHTML = '<option value="">— Select your player —</option>' +
+        players.map(p => `<option value="${p.id}">${escapeHtml(p.playerName)}</option>`).join('');
+      parentPlayerSelect.disabled = false;
+      parentHelp.textContent = 'Choose your player to link your account to their scores.';
+    }
+  }
+
+  roleSelect.addEventListener('change', () => {
+    authModalBody.dataset.role = roleSelect.value;
+    if (roleSelect.value === 'Parent') refreshParentPlayerOptions();
+  });
+
+  function openAuthModal(mode = 'signin') {
+    setAuthMode(mode);
+    authModalBody.dataset.role = 'Player';
+    roleSelect.value = 'Player';
+    authError.classList.remove('show');
+    document.getElementById('authForm').reset();
+    refreshParentPlayerOptions();
+    authModal.classList.add('open');
+    setTimeout(() => document.getElementById('authEmail').focus(), 200);
+  }
+  function closeAuthModal() { authModal.classList.remove('open'); }
+
+  function setAuthMode(mode) {
+    authModalBody.dataset.mode = mode;
+    document.querySelectorAll('.modal-mode').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    if (mode === 'signin') {
+      document.getElementById('modalTitle').textContent = 'Welcome back';
+      document.getElementById('modalSub').textContent = 'Sign in to view your scores and submit rounds.';
+      document.getElementById('authSubmit').textContent = 'Sign In';
+      document.getElementById('authPassword').setAttribute('autocomplete', 'current-password');
+    } else {
+      document.getElementById('modalTitle').textContent = 'Create an account';
+      document.getElementById('modalSub').textContent = 'Save and track your tournament scores.';
+      document.getElementById('authSubmit').textContent = 'Create Account';
+      document.getElementById('authPassword').setAttribute('autocomplete', 'new-password');
+      refreshParentPlayerOptions();
+    }
+    authError.classList.remove('show');
+  }
+  document.querySelectorAll('.modal-mode').forEach(b => b.addEventListener('click', () => setAuthMode(b.dataset.mode)));
+  document.getElementById('cancelAuth').addEventListener('click', closeAuthModal);
+
+  const pwInput = document.getElementById('authPassword');
+  const pwEye = document.getElementById('pwEye');
+  const pwEyeOff = document.getElementById('pwEyeOff');
+  document.getElementById('pwToggle').addEventListener('click', () => {
+    const showing = pwInput.type === 'text';
+    pwInput.type = showing ? 'password' : 'text';
+    pwEye.style.display = showing ? 'block' : 'none';
+    pwEyeOff.style.display = showing ? 'none' : 'block';
+  });
+
+  function showError(msg) {
+    authError.textContent = msg;
+    authError.classList.remove('show');
+    void authError.offsetWidth;
+    authError.classList.add('show');
+  }
+
+  document.getElementById('authForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const mode = authModalBody.dataset.mode;
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const role = roleSelect.value;
+    const name = document.getElementById('authPlayerName').value.trim();
+    const coachName = document.getElementById('authCoachName').value.trim();
+    const playerLink = parentPlayerSelect.value;
+
+    const submitBtn = document.getElementById('authSubmit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = mode === 'signin' ? 'Signing in…' : 'Creating…';
+
+    let result;
+    if (mode === 'signin') result = await authenticate({ email, password });
+    else result = await createAccount({ role, name, coachName, playerLink, email, password });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
+
+    if (!result.ok) { showError(result.reason); return; }
+
+    auth = {
+      id: result.user.id,
+      playerName: result.user.playerName,
+      role: result.user.role,
+      email: result.user.email,
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    closeAuthModal();
+    document.getElementById('authForm').reset();
+    renderAuthUI();
+    showTab('myscores');
+  });
+
+  // SCORES
+  const SCORES_KEY = 'pcg-scores-v3';
+  const getAdj = s => s <= 72 ? -5 : s <= 79 ? -4 : s <= 89 ? -3 : s <= 99 ? -2 : -1;
+  const loadScores = () => { try { return JSON.parse(localStorage.getItem(SCORES_KEY)) || []; } catch (e) { return []; } };
+  const saveScores = s => localStorage.setItem(SCORES_KEY, JSON.stringify(s));
+  function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+  // PERMISSIONS
+  function isCoach() { return auth && auth.role === 'Coach'; }
+  function canEdit(score) {
+    if (!auth) return false;
+    if (isCoach()) return true;
+    return auth.playerName.toLowerCase() === score.playerName.toLowerCase();
+  }
+  function canManageTryouts() { return isCoach(); }
+
+  async function verifyName(playerName, url) {
+    try {
+      const sheetIdMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!sheetIdMatch) return { ok: false, reason: 'Not a Google Sheets link' };
+      const sheetId = sheetIdMatch[1];
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+      const resp = await fetch(csvUrl);
+      if (!resp.ok) return { ok: false, reason: 'Sheet not publicly accessible' };
+      const text = (await resp.text()).toLowerCase();
+      const nameLower = playerName.toLowerCase();
+      const parts = nameLower.split(/\s+/).filter(Boolean);
+      if (text.includes(nameLower) || (parts.length > 1 && text.includes(parts[parts.length - 1]))) return { ok: true };
+      return { ok: false, reason: 'Name not found on sheet' };
+    } catch (e) { return { ok: false, reason: 'Could not verify automatically' }; }
+  }
+
+  document.getElementById('cancelSubmit').addEventListener('click', () => {
+    document.getElementById('submitModal').classList.remove('open');
+  });
+
+  const subScoreInput = document.getElementById('subScore');
+  const adjPreviewEl = document.getElementById('adjPreview');
+  const adjPreviewValue = document.getElementById('adjPreviewValue');
+
+  function updateAdjPreview() {
+    const score = parseInt(subScoreInput.value, 10);
+    if (isNaN(score) || score < 50 || score > 200) { adjPreviewValue.textContent = '—'; return; }
+    const adj = getAdj(score);
+    if (adjPreviewValue.textContent !== String(adj)) {
+      adjPreviewValue.textContent = adj;
+      adjPreviewEl.classList.add('pop');
+      setTimeout(() => adjPreviewEl.classList.remove('pop'), 300);
+    }
+  }
+  subScoreInput.addEventListener('input', updateAdjPreview);
+  document.querySelectorAll('#submitModal .step').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = parseInt(btn.dataset.step, 10);
+      const cur = parseInt(subScoreInput.value || '78', 10);
+      const next = Math.max(50, Math.min(200, (isNaN(cur) ? 78 : cur) + step));
+      subScoreInput.value = next;
+      updateAdjPreview();
+    });
+  });
+
+  let editingId = null;
+  function openSubmitModal(existing) {
+    if (!auth) { openAuthModal('signin'); return; }
+    editingId = existing ? existing.id : null;
+    document.getElementById('submitTitle').textContent = existing ? 'Edit Round' : 'Submit a Round';
+    document.getElementById('submitScoreBtn').textContent = existing ? 'Save Changes' : 'Submit & Verify';
+    if (existing) {
+      subScoreInput.value = existing.score;
+      document.getElementById('subDate').value = existing.date;
+      document.getElementById('subTournament').value = existing.tournament;
+      document.getElementById('subUrl').value = existing.verifyUrl;
+    } else {
+      subScoreInput.value = 78;
+      const today = new Date();
+      document.getElementById('subDate').value = today.toISOString().split('T')[0];
+      document.getElementById('subTournament').value = '';
+      document.getElementById('subUrl').value = '';
+    }
+    updateAdjPreview();
+    document.getElementById('submitModal').classList.add('open');
+  }
+
+  document.getElementById('fabSubmit').addEventListener('click', () => openSubmitModal());
+
+  document.getElementById('submitForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!auth) return;
+    const tournament = document.getElementById('subTournament').value.trim();
+    const date = document.getElementById('subDate').value;
+    const score = parseInt(subScoreInput.value, 10);
+    const verifyUrl = document.getElementById('subUrl').value.trim();
+    if (!tournament || !date || isNaN(score) || !verifyUrl) return;
+
+    const btn = document.getElementById('submitScoreBtn');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+
+    const result = await verifyName(auth.playerName, verifyUrl);
+    const all = loadScores();
+    if (editingId !== null) {
+      const idx = all.findIndex(s => s.id === editingId);
+      if (idx >= 0 && canEdit(all[idx])) {
+        all[idx] = {
+          ...all[idx],
+          tournament, date, score, verifyUrl,
+          verified: result.ok,
+          verifyNote: result.ok ? '' : (result.reason || ''),
+          editedAt: Date.now(),
+          editedBy: auth.email
+        };
+      }
+    } else {
+      all.push({
+        id: Date.now() + Math.random(),
+        ownerUserId: auth.id,
+        playerName: auth.playerName,
+        submittedBy: auth.email,
+        submittedRole: auth.role,
+        tournament, date, score, verifyUrl,
+        verified: result.ok,
+        verifyNote: result.ok ? '' : (result.reason || ''),
+      });
+    }
+    saveScores(all);
+
+    btn.disabled = false;
+    btn.textContent = editingId !== null ? 'Save Changes' : 'Submit & Verify';
+    editingId = null;
+    document.getElementById('submitForm').reset();
+    document.getElementById('submitModal').classList.remove('open');
+    renderMyScores();
+    renderLeaderboard();
+  });
+
+  // LEADERBOARD
+  function groupScores() {
+    const scores = loadScores();
+    const byPlayer = {};
+    scores.forEach(s => {
+      const key = s.playerName.trim().toLowerCase();
+      if (!byPlayer[key]) byPlayer[key] = { name: s.playerName.trim(), rounds: [], totalAdj: 0, verifiedCount: 0 };
+      byPlayer[key].rounds.push(s);
+      if (s.verified) {
+        byPlayer[key].totalAdj += getAdj(s.score);
+        byPlayer[key].verifiedCount += 1;
+      }
+    });
+    // Sort by most strokes off (most negative) at top
+    return Object.values(byPlayer).sort((a, b) => a.totalAdj - b.totalAdj);
+  }
+
+  function roundHtml(r, showEdit) {
+    const adj = getAdj(r.score);
+    const badge = r.verified
+      ? '<span class="badge verified">Verified</span>'
+      : '<span class="badge pending">Pending</span>';
+    const editBtns = showEdit ? `
+      <div class="round-actions">
+        <button class="icon-action" data-edit="${r.id}" title="Edit" aria-label="Edit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+        <button class="icon-action" data-del="${r.id}" title="Remove" aria-label="Remove">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    ` : '';
+    const submitterLine = isCoach() && r.submittedBy
+      ? `<div class="round-submitter">Submitted by ${escapeHtml(r.submittedRole || 'user')} · ${escapeHtml(r.submittedBy)}</div>`
+      : '';
+    return `
+      <div class="round">
+        <div class="round-info">
+          <div class="round-event">
+            <span class="event-name">${escapeHtml(r.tournament)}</span>
+            <a class="round-link" href="${escapeHtml(r.verifyUrl)}" target="_blank" rel="noopener" title="Open tournament leaderboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+          <div class="round-sub">
+            <span>${escapeHtml(r.date)}</span>
+            <span class="dot"></span>
+            ${badge}
+          </div>
+          ${submitterLine}
+        </div>
+        <div class="round-stats">
+          <div class="stat">
+            <div class="stat-label">Score</div>
+            <div class="stat-value">${r.score}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Adj</div>
+            <div class="stat-value ${r.verified ? 'adj' : 'muted'}">${r.verified ? adj : '—'}</div>
+          </div>
+          ${editBtns}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderLeaderboard() {
+    const wrap = document.getElementById('leaderboardWrap');
+    const players = groupScores();
+    if (!players.length) {
+      wrap.innerHTML = '<div class="lb-empty">No scores submitted yet.</div>';
+      return;
+    }
+    wrap.innerHTML = players.map((p, i) => {
+      const isOwnPlayer = auth && p.name.toLowerCase() === auth.playerName.toLowerCase();
+      const canManage = isOwnPlayer || isCoach();
+      const roundsHtml = p.rounds
+        .slice().sort((a,b) => a.date.localeCompare(b.date))
+        .map(r => roundHtml(r, canManage))
+        .join('');
+      return `
+        <div class="lb-item ${i === 0 ? 'first' : ''}">
+          <div class="lb-row" data-toggle>
+            <div class="lb-rank">${i + 1}</div>
+            <div class="lb-info">
+              <div class="lb-name">${escapeHtml(p.name)}</div>
+              <div class="lb-meta">${p.verifiedCount} verified · ${p.rounds.length - p.verifiedCount} pending</div>
+            </div>
+            <div class="lb-total" data-target="${p.totalAdj}">${p.totalAdj}</div>
+            <div class="lb-chevron">›</div>
+          </div>
+          <div class="lb-rounds">${roundsHtml}</div>
+        </div>
+      `;
+    }).join('');
+
+    wrap.querySelectorAll('[data-toggle]').forEach(r => r.addEventListener('click', () => r.closest('.lb-item').classList.toggle('expanded')));
+    wireRoundActions(wrap);
+    if (document.getElementById('panel-leaderboard').classList.contains('active')) setTimeout(animateLeaderboardNumbers, 100);
+  }
+
+  function wireRoundActions(scope) {
+    scope.querySelectorAll('[data-edit]').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseFloat(b.dataset.edit);
+        const score = loadScores().find(s => s.id === id);
+        if (score && canEdit(score)) openSubmitModal(score);
+      });
+    });
+    scope.querySelectorAll('[data-del]').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseFloat(b.dataset.del);
+        const score = loadScores().find(s => s.id === id);
+        if (!score || !canEdit(score)) return;
+        if (!confirm('Remove this round?')) return;
+        saveScores(loadScores().filter(s => s.id !== id));
+        renderMyScores();
+        renderLeaderboard();
+      });
+    });
+  }
+
+  // MY SCORES
+  function renderMyScores() {
+    const wrap = document.getElementById('myScoresContent');
+    if (!auth) {
+      wrap.innerHTML = `
+        <div class="gate">
+          <h3>Sign in to submit scores</h3>
+          <p>Save your tournament rounds and track your tryout adjustment over time.</p>
+          <button class="gate-btn" id="gateBtn">Sign In or Sign Up</button>
+        </div>
+      `;
+      const btn = document.getElementById('gateBtn');
+      if (btn) btn.addEventListener('click', () => openAuthModal('signin'));
+      return;
+    }
+    if (isCoach()) {
+      const allScores = loadScores();
+      const t = loadTryouts();
+      const totalSignups = t.option1.length + t.option2.length;
+      wrap.innerHTML = `
+        <div class="coach-dash-card">
+          <h3>Coach Dashboard</h3>
+          <p>Signed in as <strong>${escapeHtml(auth.playerName)}</strong> · You have full edit access across all scores and tryout signups.</p>
+        </div>
+        <div class="group-header">At a Glance</div>
+        <div class="group">
+          <div class="row"><span class="label">Tryout signups</span><span class="value">${totalSignups} / 40</span></div>
+          <div class="row"><span class="label">Total rounds submitted</span><span class="value">${allScores.length}</span></div>
+          <div class="row"><span class="label">Verified rounds</span><span class="value">${allScores.filter(s => s.verified).length}</span></div>
+          <div class="row"><span class="label">Pending review</span><span class="value">${allScores.filter(s => !s.verified).length}</span></div>
+        </div>
+        <div class="group-header">Manage</div>
+        <div class="group">
+          <a class="link-row" data-go-tab="leaderboard">
+            <span>Edit any player's scores</span><span class="arrow">→</span>
+          </a>
+          <a class="link-row" data-go-tab="tryouts">
+            <span>Manage tryout signup list</span><span class="arrow">→</span>
+          </a>
+        </div>
+      `;
+      wrap.querySelectorAll('[data-go-tab]').forEach(a => {
+        a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goTab); });
+        a.style.cursor = 'pointer';
+      });
+      return;
+    }
+    const myScores = loadScores().filter(s => s.playerName.toLowerCase() === auth.playerName.toLowerCase());
+    const verifiedRounds = myScores.filter(s => s.verified);
+    const totalAdj = verifiedRounds.reduce((sum, s) => sum + getAdj(s.score), 0);
+
+    const roundsHtml = myScores.length === 0
+      ? `<div class="lb-empty">No rounds submitted yet — tap the green + button.</div>`
+      : `<div>` + myScores.slice().sort((a,b) => a.date.localeCompare(b.date)).map(r => roundHtml(r, true)).join('') + `</div>`;
+
+    wrap.innerHTML = `
+      <div class="summary">
+        <div>
+          <div class="summary-label">${auth.role === 'Parent' ? 'Parent of' : 'Signed in as'}</div>
+          <div class="summary-name">${escapeHtml(auth.playerName)}</div>
+          ${auth.role === 'Parent' ? `<div class="summary-sub">${escapeHtml(auth.email)}</div>` : ''}
+        </div>
+        <div class="summary-stats">
+          <div class="big" data-target="${totalAdj}">0</div>
+          <div class="small">Total Strokes Off</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="openSubmit">Submit a Round</button>
+      </div>
+      <div class="group-header">Your Rounds</div>
+      <div class="group">${roundsHtml}</div>
+    `;
+    document.getElementById('openSubmit').addEventListener('click', () => openSubmitModal());
+    wireRoundActions(wrap);
+    if (document.getElementById('panel-myscores').classList.contains('active')) setTimeout(animateMyScoresNumber, 100);
+  }
+
+  // TRYOUT SIGNUPS
+  const TRYOUTS_KEY = 'pcg-tryouts-v1';
+  const TRYOUT_MAX = 20;
+
+  function loadTryouts() {
+    try { return JSON.parse(localStorage.getItem(TRYOUTS_KEY)) || { option1: [], option2: [] }; }
+    catch (e) { return { option1: [], option2: [] }; }
+  }
+  function saveTryouts(t) { localStorage.setItem(TRYOUTS_KEY, JSON.stringify(t)); }
+
+  function getMyTryoutOption() {
+    if (!auth) return null;
+    const t = loadTryouts();
+    const matches = (e) => e.playerName.toLowerCase() === auth.playerName.toLowerCase();
+    if (t.option1.some(matches)) return 'option1';
+    if (t.option2.some(matches)) return 'option2';
+    return null;
+  }
+
+  function signUpForTryout(option) {
+    if (!auth) return { ok: false, reason: 'You must sign in first.' };
+    const t = loadTryouts();
+    const matches = (e) => e.playerName.toLowerCase() === auth.playerName.toLowerCase();
+    t.option1 = t.option1.filter(e => !matches(e));
+    t.option2 = t.option2.filter(e => !matches(e));
+    if (t[option].length >= TRYOUT_MAX) return { ok: false, reason: 'That session is full.' };
+    t[option].push({
+      playerName: auth.playerName,
+      addedByUserId: auth.id,
+      addedByEmail: auth.email,
+      addedByRole: auth.role,
+      addedAt: Date.now()
+    });
+    saveTryouts(t);
+    return { ok: true };
+  }
+
+  function cancelTryoutRegistration() {
+    if (!auth) return;
+    const t = loadTryouts();
+    const matches = (e) => e.playerName.toLowerCase() === auth.playerName.toLowerCase();
+    t.option1 = t.option1.filter(e => !matches(e));
+    t.option2 = t.option2.filter(e => !matches(e));
+    saveTryouts(t);
+  }
+
+  function coachRemoveFromTryout(option, playerNameLower) {
+    if (!canManageTryouts()) return;
+    const t = loadTryouts();
+    t[option] = t[option].filter(e => e.playerName.toLowerCase() !== playerNameLower);
+    saveTryouts(t);
+  }
+
+  function renderTryouts() {
+    const wrap = document.getElementById('tryoutCards');
+    const listWrap = document.getElementById('signupLists');
+    if (!wrap) return;
+    const t = loadTryouts();
+    const myOption = getMyTryoutOption();
+
+    const card = (opt, label, date) => {
+      const count = t[opt].length;
+      const isMine = myOption === opt;
+      const isFull = count >= TRYOUT_MAX && !isMine;
+      const progress = Math.min(100, (count / TRYOUT_MAX) * 100);
+
+      let button;
+      if (!auth) {
+        button = `<button class="tryout-action primary" data-signin>Sign in to Register</button>`;
+      } else if (isCoach()) {
+        button = `<button class="tryout-action" disabled>Coach view</button>`;
+      } else if (isMine) {
+        button = `<button class="tryout-action cancel" data-cancel>Cancel Registration</button>`;
+      } else if (isFull) {
+        button = `<button class="tryout-action" disabled>Session Full</button>`;
+      } else if (myOption) {
+        button = `<button class="tryout-action primary" data-signup="${opt}">Switch to This Date</button>`;
+      } else {
+        button = `<button class="tryout-action primary" data-signup="${opt}">Sign Up</button>`;
+      }
+
+      const badge = isMine ? `
+        <div class="tryout-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          You're In
+        </div>` : '';
+
+      return `
+        <div class="tryout-card ${isMine ? 'registered' : ''} ${isFull ? 'full' : ''}">
+          ${badge}
+          <div class="tryout-card-header">
+            <span class="tryout-label">${label}</span>
+            <span class="tryout-status">${count} / ${TRYOUT_MAX}</span>
+          </div>
+          <div class="tryout-date">${date}</div>
+          <div class="tryout-progress"><div class="tryout-progress-fill" style="width: ${progress}%;"></div></div>
+          ${button}
+        </div>
+      `;
+    };
+
+    wrap.innerHTML = card('option1', 'Option 1', 'July 15 &amp; 16') + card('option2', 'Option 2', 'July 22 &amp; 23');
+
+    wrap.querySelectorAll('[data-signup]').forEach(b => {
+      b.addEventListener('click', () => {
+        const result = signUpForTryout(b.dataset.signup);
+        if (!result.ok) { alert(result.reason); return; }
+        renderTryouts();
+      });
+    });
+    wrap.querySelectorAll('[data-cancel]').forEach(b => {
+      b.addEventListener('click', () => {
+        if (confirm('Cancel your tryout registration?')) {
+          cancelTryoutRegistration();
+          renderTryouts();
+        }
+      });
+    });
+    wrap.querySelectorAll('[data-signin]').forEach(b => {
+      b.addEventListener('click', () => openAuthModal('signin'));
+    });
+
+    // PUBLIC SIGNUP LIST
+    if (listWrap) {
+      const renderList = (opt, label) => {
+        const entries = t[opt].slice().sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+        const itemsHtml = entries.length === 0
+          ? `<li class="signup-name empty">No one yet</li>`
+          : entries.map((e, i) => {
+              const removeBtn = canManageTryouts()
+                ? `<button class="signup-remove" data-remove-opt="${opt}" data-remove-name="${escapeHtml(e.playerName.toLowerCase())}" title="Remove ${escapeHtml(e.playerName)}">×</button>`
+                : '';
+              return `<li class="signup-name">
+                <span class="signup-num">${i + 1}.</span>
+                <span class="signup-text">${escapeHtml(e.playerName)}</span>
+                ${removeBtn}
+              </li>`;
+            }).join('');
+        return `
+          <div class="signup-list">
+            <div class="signup-list-header">
+              <span class="title">${label}</span>
+              <span class="count">${entries.length}</span>
+            </div>
+            <ul class="signup-names">${itemsHtml}</ul>
+          </div>
+        `;
+      };
+      listWrap.innerHTML = renderList('option1', 'Option 1 · July 15 &amp; 16') + renderList('option2', 'Option 2 · July 22 &amp; 23');
+      listWrap.querySelectorAll('[data-remove-opt]').forEach(b => {
+        b.addEventListener('click', () => {
+          if (!confirm('Remove this player from the tryout list?')) return;
+          coachRemoveFromTryout(b.dataset.removeOpt, b.dataset.removeName);
+          renderTryouts();
+        });
+      });
+    }
+  }
+
+  // Wire "Submit a Tournament Score" button on Tryouts page
+  document.getElementById('submitFromTryout').addEventListener('click', () => openSubmitModal());
+
+  // INIT
+  renderAuthUI();
+  renderLeaderboard();
+  renderTryouts();
+</script>
+
+</body>
+</html>
