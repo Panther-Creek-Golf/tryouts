@@ -901,12 +901,53 @@
     80% { transform: translateX(2px); }
   }
 
-  .signup-only, .signin-only, .role-player, .role-parent, .role-coach { display: none; }
+  .signup-only, .signin-only, .reset-only, .role-player, .role-parent, .role-coach { display: none; }
   .modal[data-mode="signup"] .signup-only { display: block; }
   .modal[data-mode="signin"] .signin-only { display: block; }
+  .modal[data-mode="reset"] .reset-only { display: block; }
   .modal[data-mode="signup"][data-role="Player"] .role-player { display: block; }
   .modal[data-mode="signup"][data-role="Parent"] .role-parent { display: block; }
   .modal[data-mode="signup"][data-role="Coach"] .role-coach { display: block; }
+  .modal[data-mode="reset"] .modal-modes { display: none; }
+  .modal[data-mode="reset"] .signin-pwd { display: none; }
+
+  /* Forgot password link */
+  .forgot-link {
+    display: inline-block;
+    margin-top: 6px;
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 4px 0;
+  }
+  .forgot-link:hover { text-decoration: underline; }
+
+  /* Disclaimer */
+  .disclaimer {
+    margin-top: 28px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+    font-style: italic;
+    text-align: center;
+  }
+  .disclaimer strong { color: var(--ink); font-style: normal; font-weight: 700; }
+
+  /* Coach email line */
+  .coach-email {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+    word-break: break-all;
+  }
 
   .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
   .modal-close {
@@ -1609,6 +1650,10 @@
       <div class="adj-row" style="--bar-delay: 0.75s;"><span class="label">100+</span><div class="adj-bar-track"><div class="adj-bar-fill" style="width: 20%;"></div></div><span class="adj-num">−1</span></div>
     </div>
 
+    <p class="disclaimer">
+      <strong>A note from the coaches:</strong> Final roster decisions rest with the coaching staff. Summer tournament results are one consideration in the process — they help, but they do not guarantee a spot on the team.
+    </p>
+
   </div>
 
   <!-- CONTACT -->
@@ -1625,6 +1670,7 @@
           <div>
             <div class="coach-name">Tyler Garrigus</div>
             <div class="coach-role">Head Coach</div>
+            <div class="coach-email">garrigust@friscoisd.org</div>
           </div>
         </div>
         <div class="coach-contacts">
@@ -1652,6 +1698,7 @@
           <div>
             <div class="coach-name">Johnathon Griffin</div>
             <div class="coach-role">Assistant Coach</div>
+            <div class="coach-email">griffinjo@friscoisd.org</div>
           </div>
         </div>
         <div class="coach-contacts">
@@ -1724,10 +1771,10 @@
           <label for="authEmail">Email</label>
           <input id="authEmail" name="email" type="email" required placeholder="you@example.com" autocomplete="email" />
         </div>
-        <div class="modal-field">
+        <div class="modal-field signin-pwd">
           <label for="authPassword">Password</label>
           <div class="password-wrap">
-            <input id="authPassword" name="password" type="password" required placeholder="At least 6 characters" autocomplete="current-password" minlength="6" />
+            <input id="authPassword" name="password" type="password" placeholder="At least 6 characters" autocomplete="current-password" minlength="6" />
             <button type="button" class="password-toggle" id="pwToggle" aria-label="Show password">
               <svg id="pwEye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -1738,6 +1785,16 @@
               </svg>
             </button>
           </div>
+          <button type="button" class="forgot-link signin-only" id="forgotLink">Forgot password?</button>
+        </div>
+
+        <div class="modal-field reset-only">
+          <label for="authNewPassword">New Password</label>
+          <input id="authNewPassword" type="password" placeholder="At least 6 characters" minlength="6" />
+        </div>
+        <div class="modal-field reset-only">
+          <label for="authNewPasswordConfirm">Confirm New Password</label>
+          <input id="authNewPasswordConfirm" type="password" placeholder="Type it again" minlength="6" />
         </div>
 
         <div class="modal-error" id="authError"></div>
@@ -1778,7 +1835,8 @@
         </div>
         <div class="modal-field">
           <label for="subDate">Date</label>
-          <input id="subDate" type="date" required />
+          <input id="subDate" type="date" required min="2026-05-06" max="2026-07-14" />
+          <div class="field-help">Tournaments between May 6 – July 14, 2026 only.</div>
         </div>
         <div class="modal-field">
           <label for="subTournament">Event / Tournament</label>
@@ -1914,6 +1972,16 @@
     return { ok: true, user };
   }
 
+  async function resetPassword({ email, newPassword }) {
+    const users = loadUsers();
+    const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+    if (idx === -1) return { ok: false, reason: 'No account found with that email.' };
+    if (!newPassword || newPassword.length < 6) return { ok: false, reason: 'Password must be at least 6 characters.' };
+    users[idx].passwordHash = await hashPassword(newPassword);
+    saveUsers(users);
+    return { ok: true };
+  }
+
   // SESSION
   let auth = null;
   try { auth = JSON.parse(localStorage.getItem(AUTH_KEY)); } catch (e) {}
@@ -2006,17 +2074,22 @@
       document.getElementById('modalSub').textContent = 'Sign in to view your scores and submit rounds.';
       document.getElementById('authSubmit').textContent = 'Sign In';
       document.getElementById('authPassword').setAttribute('autocomplete', 'current-password');
-    } else {
+    } else if (mode === 'signup') {
       document.getElementById('modalTitle').textContent = 'Create an account';
       document.getElementById('modalSub').textContent = 'Save and track your tournament scores.';
       document.getElementById('authSubmit').textContent = 'Create Account';
       document.getElementById('authPassword').setAttribute('autocomplete', 'new-password');
       refreshParentPlayerOptions();
+    } else if (mode === 'reset') {
+      document.getElementById('modalTitle').textContent = 'Reset your password';
+      document.getElementById('modalSub').textContent = 'Enter the email you used to sign up, then choose a new password.';
+      document.getElementById('authSubmit').textContent = 'Reset Password';
     }
     authError.classList.remove('show');
   }
   document.querySelectorAll('.modal-mode').forEach(b => b.addEventListener('click', () => setAuthMode(b.dataset.mode)));
   document.getElementById('cancelAuth').addEventListener('click', closeAuthModal);
+  document.getElementById('forgotLink').addEventListener('click', () => setAuthMode('reset'));
 
   const pwInput = document.getElementById('authPassword');
   const pwEye = document.getElementById('pwEye');
@@ -2047,11 +2120,43 @@
 
     const submitBtn = document.getElementById('authSubmit');
     submitBtn.disabled = true;
-    submitBtn.textContent = mode === 'signin' ? 'Signing in…' : 'Creating…';
+    submitBtn.textContent = mode === 'signin' ? 'Signing in…' : mode === 'signup' ? 'Creating…' : 'Resetting…';
 
     let result;
-    if (mode === 'signin') result = await authenticate({ email, password });
-    else result = await createAccount({ role, name, coachName, playerLink, email, password });
+    if ((mode === 'signin' || mode === 'signup') && !password) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
+      showError('Please enter your password.');
+      return;
+    }
+    if (mode === 'signin') {
+      result = await authenticate({ email, password });
+    } else if (mode === 'signup') {
+      result = await createAccount({ role, name, coachName, playerLink, email, password });
+    } else if (mode === 'reset') {
+      const newPwd = document.getElementById('authNewPassword').value;
+      const confirmPwd = document.getElementById('authNewPasswordConfirm').value;
+      if (newPwd !== confirmPwd) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Reset Password';
+        showError('Passwords do not match.');
+        return;
+      }
+      result = await resetPassword({ email, newPassword: newPwd });
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Reset Password';
+      if (!result.ok) { showError(result.reason); return; }
+      // Success — switch back to signin with the email pre-filled
+      document.getElementById('authNewPassword').value = '';
+      document.getElementById('authNewPasswordConfirm').value = '';
+      document.getElementById('authPassword').value = '';
+      setAuthMode('signin');
+      showError('Password reset. Sign in with your new password.');
+      authError.style.background = 'var(--accent-soft)';
+      authError.style.color = 'var(--accent)';
+      setTimeout(() => { authError.style.background = ''; authError.style.color = ''; }, 4000);
+      return;
+    }
 
     submitBtn.disabled = false;
     submitBtn.textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
@@ -2145,8 +2250,12 @@
       document.getElementById('subUrl').value = existing.verifyUrl;
     } else {
       subScoreInput.value = 78;
-      const today = new Date();
-      document.getElementById('subDate').value = today.toISOString().split('T')[0];
+      // Default to today, clamped to the May 6 – July 14, 2026 window
+      const today = new Date().toISOString().split('T')[0];
+      let defaultDate = today;
+      if (today < '2026-05-06') defaultDate = '2026-05-06';
+      else if (today > '2026-07-14') defaultDate = '2026-07-14';
+      document.getElementById('subDate').value = defaultDate;
       document.getElementById('subTournament').value = '';
       document.getElementById('subUrl').value = '';
     }
@@ -2164,6 +2273,11 @@
     const score = parseInt(subScoreInput.value, 10);
     const verifyUrl = document.getElementById('subUrl').value.trim();
     if (!tournament || !date || isNaN(score) || !verifyUrl) return;
+    // Enforce tournament date window
+    if (date < '2026-05-06' || date > '2026-07-14') {
+      alert('Tournament date must be between May 6 and July 14, 2026.');
+      return;
+    }
 
     const btn = document.getElementById('submitScoreBtn');
     btn.disabled = true; btn.textContent = 'Verifying…';
