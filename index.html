@@ -913,7 +913,7 @@
 
   /* Forgot password link */
   .forgot-link {
-    display: inline-block;
+    display: none;
     margin-top: 6px;
     background: transparent;
     border: none;
@@ -924,6 +924,7 @@
     font-family: inherit;
     padding: 4px 0;
   }
+  .modal[data-mode="signin"] .forgot-link { display: inline-block; }
   .forgot-link:hover { text-decoration: underline; }
 
   /* Disclaimer */
@@ -2016,7 +2017,7 @@
   authBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (auth) userMenu.classList.toggle('open');
-    else openAuthModal();
+    else openAuthModal('signin');
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('.auth-wrap')) userMenu.classList.remove('open'); });
   document.getElementById('goMyScores').addEventListener('click', () => { userMenu.classList.remove('open'); showTab('myscores'); });
@@ -2059,7 +2060,25 @@
     authModalBody.dataset.role = 'Player';
     roleSelect.value = 'Player';
     authError.classList.remove('show');
+    authError.style.background = '';
+    authError.style.color = '';
+    // Force-clear every input so no stale value carries over
     document.getElementById('authForm').reset();
+    ['authEmail','authPassword','authPlayerName','authCoachName','authNewPassword','authNewPasswordConfirm'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    // Make sure submit button is in a clean enabled state with the right label
+    const submitBtn = document.getElementById('authSubmit');
+    submitBtn.disabled = false;
+    submitBtn.textContent = mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password';
+    // Always show password back as masked (in case eye toggle left it as text)
+    const pwIn = document.getElementById('authPassword');
+    if (pwIn) pwIn.type = 'password';
+    const eye = document.getElementById('pwEye');
+    const eyeOff = document.getElementById('pwEyeOff');
+    if (eye) eye.style.display = 'block';
+    if (eyeOff) eyeOff.style.display = 'none';
     refreshParentPlayerOptions();
     authModal.classList.add('open');
     setTimeout(() => document.getElementById('authEmail').focus(), 200);
