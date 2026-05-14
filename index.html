@@ -1790,12 +1790,7 @@
         </div>
 
         <div class="modal-field reset-only">
-          <label for="authNewPassword">New Password</label>
-          <input id="authNewPassword" type="password" placeholder="At least 6 characters" minlength="6" />
-        </div>
-        <div class="modal-field reset-only">
-          <label for="authNewPasswordConfirm">Confirm New Password</label>
-          <input id="authNewPasswordConfirm" type="password" placeholder="Type it again" minlength="6" />
+          <div class="field-help">Enter the email on your account above. We'll send you a secure link to set a new password.</div>
         </div>
 
         <div class="modal-error" id="authError"></div>
@@ -1863,8 +1858,41 @@
   </svg>
 </button>
 
-<script>
-  // THEME
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged, sendPasswordResetEmail
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import {
+    getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc,
+    updateDoc, deleteDoc, onSnapshot, query, where
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDUI8pInfCZIiB-XRbNDFQIGpVz14pgPWc",
+    authDomain: "panther-creek-tryouts.firebaseapp.com",
+    projectId: "panther-creek-tryouts",
+    storageBucket: "panther-creek-tryouts.firebasestorage.app",
+    messagingSenderId: "201612041323",
+    appId: "1:201612041323:web:fa86cdbb7f604bc982a52e"
+  };
+  const fbApp = initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const db = getFirestore(fbApp);
+
+  const APPROVED_COACH_EMAILS = ['garrigust@friscoisd.org', 'griffinjo@friscoisd.org'];
+  const TRYOUT_MAX = 20;
+
+  // ===== STATE =====
+  let currentUser = null;   // { uid, role, playerName, email }
+  let allScores = [];       // synced from Firestore
+  let allSignups = [];      // synced from Firestore
+  let justAuthenticated = false;
+
+  function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+  // ===== THEME =====
   const root = document.documentElement;
   const storedTheme = localStorage.getItem('pcg-theme');
   if (storedTheme) root.setAttribute('data-theme', storedTheme);
@@ -1880,7 +1908,7 @@
     setTimeout(() => themeToggle.classList.remove('spinning'), 500);
   });
 
-  // TABS
+  // ===== TABS =====
   function showTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
@@ -1891,12 +1919,9 @@
   }
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
   document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+  document.getElementById('brandBtn').addEventListener('click', () => showTab('leaderboard'));
 
-  document.getElementById('brandBtn').addEventListener('click', () => {
-    showTab('leaderboard');
-  });
-
-  // COUNT-UP
+  // ===== COUNT-UP =====
   function animateCount(el, target, duration = 900) {
     if (target === 0) { el.textContent = '0'; return; }
     const t0 = performance.now();
@@ -1916,91 +1941,132 @@
     if (el) animateCount(el, parseFloat(el.dataset.target));
   }
 
-  // USERS
-  const USERS_KEY = 'pcg-users-v1';
-  const AUTH_KEY = 'pcg-auth-v3';
-  const APPROVED_COACH_EMAILS = ['garrigust@friscoisd.org', 'griffinjo@friscoisd.org'];
+  // ===== PERMISSIONS =====
+  function isCoach() { return currentUser && currentUser.role === 'Coach'; }
+  function canEdit(score) {
+    if (!currentUser) return false;
+    if (isCoach()) return true;
+    return currentUser.playerName.toLowerCase() === (score.playerName || '').toLowerCase();
+  }
+  function canManageTryouts() { return isCoach(); }
 
-  function loadUsers() { try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch (e) { return []; } }
-  function saveUsers(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
-
-  async function hashPassword(password) {
-    const data = new TextEncoder().encode('pcg-salt-2026:' + password);
-    const buf = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // ===== AUTH HELPERS =====
+  async function loadProfile(uid, retries = 8) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (snap.exists()) return snap.data();
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 350));
+    }
+    return null;
   }
 
   async function createAccount({ role, name, coachName, playerLink, email, password }) {
-    const users = loadUsers();
     const emailLower = email.toLowerCase();
-    if (users.find(u => u.email.toLowerCase() === emailLower)) {
-      return { ok: false, reason: 'An account with this email already exists.' };
-    }
     if (password.length < 6) return { ok: false, reason: 'Password must be at least 6 characters.' };
 
     let playerName;
-    let approved = true;
     if (role === 'Player') {
       if (!name || name.length < 2) return { ok: false, reason: 'Please enter your full name.' };
-      const existing = users.find(u => u.role === 'Player' && u.playerName.toLowerCase() === name.toLowerCase());
-      if (existing) return { ok: false, reason: 'A player account with that name already exists.' };
+      try {
+        const q = query(collection(db, 'playerDirectory'), where('playerNameLower', '==', name.trim().toLowerCase()));
+        const existing = await getDocs(q);
+        if (!existing.empty) return { ok: false, reason: 'A player account with that name already exists.' };
+      } catch (e) {}
       playerName = name.trim();
     } else if (role === 'Parent') {
       if (!playerLink) return { ok: false, reason: 'Please select your player.' };
-      const player = users.find(u => u.id === parseInt(playerLink, 10));
-      if (!player) return { ok: false, reason: 'Selected player not found.' };
-      playerName = player.playerName;
+      try {
+        const pd = await getDoc(doc(db, 'playerDirectory', playerLink));
+        if (!pd.exists()) return { ok: false, reason: 'Selected player not found.' };
+        playerName = pd.data().playerName;
+      } catch (e) { return { ok: false, reason: 'Could not look up that player.' }; }
     } else if (role === 'Coach') {
       if (!APPROVED_COACH_EMAILS.includes(emailLower)) {
         return { ok: false, reason: 'Coach access requires an approved Frisco ISD email. Contact the head coach.' };
       }
       if (!coachName || coachName.length < 2) return { ok: false, reason: 'Please enter your full name.' };
       playerName = coachName.trim();
+    } else {
+      return { ok: false, reason: 'Please choose a role.' };
     }
 
-    const passwordHash = await hashPassword(password);
-    const user = { id: Date.now(), role, playerName, email: emailLower, passwordHash, approved };
-    users.push(user);
-    saveUsers(users);
-    return { ok: true, user };
+    try {
+      const cred = await createUserWithEmailAndPassword(fbAuth, emailLower, password);
+      const uid = cred.user.uid;
+      await setDoc(doc(db, 'users', uid), {
+        uid, role, playerName, playerNameLower: playerName.toLowerCase(), email: emailLower
+      });
+      if (role === 'Player') {
+        await setDoc(doc(db, 'playerDirectory', uid), {
+          playerName, playerNameLower: playerName.toLowerCase()
+        });
+      }
+      return { ok: true };
+    } catch (err) {
+      let reason = 'Could not create the account. Please try again.';
+      if (err.code === 'auth/email-already-in-use') reason = 'An account with this email already exists.';
+      else if (err.code === 'auth/invalid-email') reason = 'Please enter a valid email address.';
+      else if (err.code === 'auth/weak-password') reason = 'Password must be at least 6 characters.';
+      return { ok: false, reason };
+    }
   }
 
-  async function authenticate({ email, password }) {
-    const users = loadUsers();
-    const hash = await hashPassword(password);
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === hash);
-    if (!user) return { ok: false, reason: 'Email or password is incorrect.' };
-    return { ok: true, user };
+  async function signIn({ email, password }) {
+    try {
+      await signInWithEmailAndPassword(fbAuth, email.toLowerCase(), password);
+      return { ok: true };
+    } catch (err) {
+      let reason = 'Email or password is incorrect.';
+      if (err.code === 'auth/invalid-email') reason = 'Please enter a valid email address.';
+      else if (err.code === 'auth/too-many-requests') reason = 'Too many attempts. Please wait a few minutes and try again.';
+      return { ok: false, reason };
+    }
   }
 
-  async function resetPassword({ email, newPassword }) {
-    const users = loadUsers();
-    const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-    if (idx === -1) return { ok: false, reason: 'No account found with that email.' };
-    if (!newPassword || newPassword.length < 6) return { ok: false, reason: 'Password must be at least 6 characters.' };
-    users[idx].passwordHash = await hashPassword(newPassword);
-    saveUsers(users);
-    return { ok: true };
+  async function sendReset(email) {
+    try {
+      await sendPasswordResetEmail(fbAuth, email.toLowerCase());
+      return { ok: true };
+    } catch (err) {
+      let reason = 'Could not send the reset email. Please try again.';
+      if (err.code === 'auth/invalid-email') reason = 'Please enter a valid email address.';
+      else if (err.code === 'auth/user-not-found') reason = 'No account found with that email.';
+      return { ok: false, reason };
+    }
   }
 
-  // SESSION
-  let auth = null;
-  try { auth = JSON.parse(localStorage.getItem(AUTH_KEY)); } catch (e) {}
+  // ===== AUTH STATE =====
   const authBtn = document.getElementById('authBtn');
   const userMenu = document.getElementById('userMenu');
   const myScoresTab = document.getElementById('myScoresTab');
 
+  onAuthStateChanged(fbAuth, async (fbUser) => {
+    if (fbUser) {
+      const profile = await loadProfile(fbUser.uid);
+      currentUser = profile ? { uid: fbUser.uid, ...profile } : null;
+    } else {
+      currentUser = null;
+    }
+    renderAuthUI();
+    renderLeaderboard();
+    if (currentUser && justAuthenticated) {
+      justAuthenticated = false;
+      showTab('myscores');
+    }
+  });
+
   function renderAuthUI() {
-    if (auth) {
-      authBtn.textContent = 'Hi, ' + auth.playerName.split(' ')[0];
+    if (currentUser) {
+      authBtn.textContent = 'Hi, ' + currentUser.playerName.split(' ')[0];
       authBtn.classList.add('signed-in');
-      const namePrefix = auth.role === 'Parent' ? 'Parent of ' : '';
-      const coachBadge = auth.role === 'Coach' ? ' <span class="coach-pill">Coach</span>' : '';
-      document.getElementById('menuName').innerHTML = escapeHtml(namePrefix + auth.playerName) + coachBadge;
-      document.getElementById('menuRole').textContent = auth.email;
+      const namePrefix = currentUser.role === 'Parent' ? 'Parent of ' : '';
+      const coachBadge = currentUser.role === 'Coach' ? ' <span class="coach-pill">Coach</span>' : '';
+      document.getElementById('menuName').innerHTML = escapeHtml(namePrefix + currentUser.playerName) + coachBadge;
+      document.getElementById('menuRole').textContent = currentUser.email;
       myScoresTab.style.display = '';
       myScoresTab.textContent = isCoach() ? 'Dashboard' : 'My Scores';
-      // Coaches submit on behalf of players via leaderboard edits — hide their FAB
       const fab = document.getElementById('fabSubmit');
       if (isCoach()) fab.classList.remove('visible'); else fab.classList.add('visible');
     } else {
@@ -2016,19 +2082,18 @@
 
   authBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (auth) userMenu.classList.toggle('open');
+    if (currentUser) userMenu.classList.toggle('open');
     else openAuthModal('signin');
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('.auth-wrap')) userMenu.classList.remove('open'); });
   document.getElementById('goMyScores').addEventListener('click', () => { userMenu.classList.remove('open'); showTab('myscores'); });
-  document.getElementById('signOutBtn').addEventListener('click', () => {
-    auth = null;
-    localStorage.removeItem(AUTH_KEY);
-    renderAuthUI();
+  document.getElementById('signOutBtn').addEventListener('click', async () => {
+    userMenu.classList.remove('open');
+    try { await signOut(fbAuth); } catch (e) {}
     showTab('leaderboard');
   });
 
-  // AUTH MODAL
+  // ===== AUTH MODAL =====
   const authModal = document.getElementById('authModal');
   const authModalBody = document.getElementById('authModalBody');
   const authError = document.getElementById('authError');
@@ -2036,17 +2101,27 @@
   const parentPlayerSelect = document.getElementById('authParentPlayer');
   const parentHelp = document.getElementById('parentHelp');
 
-  function refreshParentPlayerOptions() {
-    const players = loadUsers().filter(u => u.role === 'Player');
-    if (players.length === 0) {
-      parentPlayerSelect.innerHTML = '<option value="">— No players have signed up yet —</option>';
+  async function refreshParentPlayerOptions() {
+    parentPlayerSelect.innerHTML = '<option value="">— Loading players… —</option>';
+    parentPlayerSelect.disabled = true;
+    try {
+      const snap = await getDocs(collection(db, 'playerDirectory'));
+      const players = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+        .sort((a, b) => (a.playerName || '').localeCompare(b.playerName || ''));
+      if (players.length === 0) {
+        parentPlayerSelect.innerHTML = '<option value="">— No players have signed up yet —</option>';
+        parentPlayerSelect.disabled = true;
+        parentHelp.textContent = 'Your player must create their account first. Then come back and link.';
+      } else {
+        parentPlayerSelect.innerHTML = '<option value="">— Select your player —</option>' +
+          players.map(p => `<option value="${escapeHtml(p.uid)}">${escapeHtml(p.playerName)}</option>`).join('');
+        parentPlayerSelect.disabled = false;
+        parentHelp.textContent = 'Choose your player to link your account to their scores.';
+      }
+    } catch (e) {
+      parentPlayerSelect.innerHTML = '<option value="">— Could not load players —</option>';
       parentPlayerSelect.disabled = true;
-      parentHelp.textContent = 'Your player must create their account first. Then come back and link.';
-    } else {
-      parentPlayerSelect.innerHTML = '<option value="">— Select your player —</option>' +
-        players.map(p => `<option value="${p.id}">${escapeHtml(p.playerName)}</option>`).join('');
-      parentPlayerSelect.disabled = false;
-      parentHelp.textContent = 'Choose your player to link your account to their scores.';
+      parentHelp.textContent = 'Please check your connection and try again.';
     }
   }
 
@@ -2062,24 +2137,20 @@
     authError.classList.remove('show');
     authError.style.background = '';
     authError.style.color = '';
-    // Force-clear every input so no stale value carries over
     document.getElementById('authForm').reset();
-    ['authEmail','authPassword','authPlayerName','authCoachName','authNewPassword','authNewPasswordConfirm'].forEach(id => {
+    ['authEmail','authPassword','authPlayerName','authCoachName'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-    // Make sure submit button is in a clean enabled state with the right label
     const submitBtn = document.getElementById('authSubmit');
     submitBtn.disabled = false;
-    submitBtn.textContent = mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password';
-    // Always show password back as masked (in case eye toggle left it as text)
+    submitBtn.textContent = mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link';
     const pwIn = document.getElementById('authPassword');
     if (pwIn) pwIn.type = 'password';
     const eye = document.getElementById('pwEye');
     const eyeOff = document.getElementById('pwEyeOff');
     if (eye) eye.style.display = 'block';
     if (eyeOff) eyeOff.style.display = 'none';
-    refreshParentPlayerOptions();
     authModal.classList.add('open');
     setTimeout(() => document.getElementById('authEmail').focus(), 200);
   }
@@ -2101,8 +2172,8 @@
       refreshParentPlayerOptions();
     } else if (mode === 'reset') {
       document.getElementById('modalTitle').textContent = 'Reset your password';
-      document.getElementById('modalSub').textContent = 'Enter the email you used to sign up, then choose a new password.';
-      document.getElementById('authSubmit').textContent = 'Reset Password';
+      document.getElementById('modalSub').textContent = 'We will email you a secure link to set a new password.';
+      document.getElementById('authSubmit').textContent = 'Send Reset Link';
     }
     authError.classList.remove('show');
   }
@@ -2122,9 +2193,20 @@
 
   function showError(msg) {
     authError.textContent = msg;
+    authError.style.background = '';
+    authError.style.color = '';
     authError.classList.remove('show');
     void authError.offsetWidth;
     authError.classList.add('show');
+  }
+  function showSuccess(msg) {
+    authError.textContent = msg;
+    authError.classList.remove('show');
+    void authError.offsetWidth;
+    authError.classList.add('show');
+    authError.style.background = 'var(--accent-soft)';
+    authError.style.color = 'var(--accent)';
+    setTimeout(() => { authError.style.background = ''; authError.style.color = ''; }, 6000);
   }
 
   document.getElementById('authForm').addEventListener('submit', async (e) => {
@@ -2136,80 +2218,47 @@
     const name = document.getElementById('authPlayerName').value.trim();
     const coachName = document.getElementById('authCoachName').value.trim();
     const playerLink = parentPlayerSelect.value;
-
     const submitBtn = document.getElementById('authSubmit');
-    submitBtn.disabled = true;
-    submitBtn.textContent = mode === 'signin' ? 'Signing in…' : mode === 'signup' ? 'Creating…' : 'Resetting…';
 
-    let result;
-    if ((mode === 'signin' || mode === 'signup') && !password) {
+    if (!email) { showError('Please enter your email.'); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = mode === 'signin' ? 'Signing in…' : mode === 'signup' ? 'Creating…' : 'Sending…';
+
+    if (mode === 'reset') {
+      const result = await sendReset(email);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Reset Link';
+      if (!result.ok) { showError(result.reason); return; }
+      setAuthMode('signin');
+      submitBtn.textContent = 'Sign In';
+      showSuccess('Reset link sent. Check your email (and spam folder).');
+      return;
+    }
+
+    if (!password) {
       submitBtn.disabled = false;
       submitBtn.textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
       showError('Please enter your password.');
       return;
     }
-    if (mode === 'signin') {
-      result = await authenticate({ email, password });
-    } else if (mode === 'signup') {
-      result = await createAccount({ role, name, coachName, playerLink, email, password });
-    } else if (mode === 'reset') {
-      const newPwd = document.getElementById('authNewPassword').value;
-      const confirmPwd = document.getElementById('authNewPasswordConfirm').value;
-      if (newPwd !== confirmPwd) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Reset Password';
-        showError('Passwords do not match.');
-        return;
-      }
-      result = await resetPassword({ email, newPassword: newPwd });
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Reset Password';
-      if (!result.ok) { showError(result.reason); return; }
-      // Success — switch back to signin with the email pre-filled
-      document.getElementById('authNewPassword').value = '';
-      document.getElementById('authNewPasswordConfirm').value = '';
-      document.getElementById('authPassword').value = '';
-      setAuthMode('signin');
-      showError('Password reset. Sign in with your new password.');
-      authError.style.background = 'var(--accent-soft)';
-      authError.style.color = 'var(--accent)';
-      setTimeout(() => { authError.style.background = ''; authError.style.color = ''; }, 4000);
-      return;
-    }
+
+    let result;
+    if (mode === 'signin') result = await signIn({ email, password });
+    else result = await createAccount({ role, name, coachName, playerLink, email, password });
 
     submitBtn.disabled = false;
     submitBtn.textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
 
     if (!result.ok) { showError(result.reason); return; }
 
-    auth = {
-      id: result.user.id,
-      playerName: result.user.playerName,
-      role: result.user.role,
-      email: result.user.email,
-    };
-    localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+    justAuthenticated = true;
     closeAuthModal();
     document.getElementById('authForm').reset();
-    renderAuthUI();
-    showTab('myscores');
   });
 
-  // SCORES
-  const SCORES_KEY = 'pcg-scores-v3';
+  // ===== SCORE LOGIC =====
   const getAdj = s => s <= 72 ? -5 : s <= 79 ? -4 : s <= 89 ? -3 : s <= 99 ? -2 : -1;
-  const loadScores = () => { try { return JSON.parse(localStorage.getItem(SCORES_KEY)) || []; } catch (e) { return []; } };
-  const saveScores = s => localStorage.setItem(SCORES_KEY, JSON.stringify(s));
-  function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
-
-  // PERMISSIONS
-  function isCoach() { return auth && auth.role === 'Coach'; }
-  function canEdit(score) {
-    if (!auth) return false;
-    if (isCoach()) return true;
-    return auth.playerName.toLowerCase() === score.playerName.toLowerCase();
-  }
-  function canManageTryouts() { return isCoach(); }
 
   async function verifyName(playerName, url) {
     try {
@@ -2227,14 +2276,13 @@
     } catch (e) { return { ok: false, reason: 'Could not verify automatically' }; }
   }
 
+  // ===== SUBMIT MODAL =====
   document.getElementById('cancelSubmit').addEventListener('click', () => {
     document.getElementById('submitModal').classList.remove('open');
   });
-
   const subScoreInput = document.getElementById('subScore');
   const adjPreviewEl = document.getElementById('adjPreview');
   const adjPreviewValue = document.getElementById('adjPreviewValue');
-
   function updateAdjPreview() {
     const score = parseInt(subScoreInput.value, 10);
     if (isNaN(score) || score < 50 || score > 200) { adjPreviewValue.textContent = '—'; return; }
@@ -2258,7 +2306,7 @@
 
   let editingId = null;
   function openSubmitModal(existing) {
-    if (!auth) { openAuthModal('signin'); return; }
+    if (!currentUser) { openAuthModal('signin'); return; }
     editingId = existing ? existing.id : null;
     document.getElementById('submitTitle').textContent = existing ? 'Edit Round' : 'Submit a Round';
     document.getElementById('submitScoreBtn').textContent = existing ? 'Save Changes' : 'Submit & Verify';
@@ -2269,7 +2317,6 @@
       document.getElementById('subUrl').value = existing.verifyUrl;
     } else {
       subScoreInput.value = 78;
-      // Default to today, clamped to the May 6 – July 14, 2026 window
       const today = new Date().toISOString().split('T')[0];
       let defaultDate = today;
       if (today < '2026-05-06') defaultDate = '2026-05-06';
@@ -2281,77 +2328,81 @@
     updateAdjPreview();
     document.getElementById('submitModal').classList.add('open');
   }
-
   document.getElementById('fabSubmit').addEventListener('click', () => openSubmitModal());
 
   document.getElementById('submitForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!auth) return;
+    if (!currentUser) return;
     const tournament = document.getElementById('subTournament').value.trim();
     const date = document.getElementById('subDate').value;
     const score = parseInt(subScoreInput.value, 10);
     const verifyUrl = document.getElementById('subUrl').value.trim();
     if (!tournament || !date || isNaN(score) || !verifyUrl) return;
-    // Enforce tournament date window
     if (date < '2026-05-06' || date > '2026-07-14') {
       alert('Tournament date must be between May 6 and July 14, 2026.');
       return;
     }
-
     const btn = document.getElementById('submitScoreBtn');
     btn.disabled = true; btn.textContent = 'Verifying…';
 
-    const result = await verifyName(auth.playerName, verifyUrl);
-    const all = loadScores();
-    if (editingId !== null) {
-      const idx = all.findIndex(s => s.id === editingId);
-      if (idx >= 0 && canEdit(all[idx])) {
-        all[idx] = {
-          ...all[idx],
+    let targetPlayerName = currentUser.playerName;
+    if (editingId) {
+      const existing = allScores.find(s => s.id === editingId);
+      if (existing) targetPlayerName = existing.playerName;
+    }
+    const result = await verifyName(targetPlayerName, verifyUrl);
+
+    try {
+      if (editingId) {
+        const existing = allScores.find(s => s.id === editingId);
+        if (existing && canEdit(existing)) {
+          await updateDoc(doc(db, 'scores', editingId), {
+            tournament, date, score, verifyUrl,
+            verified: result.ok,
+            verifyNote: result.ok ? '' : (result.reason || ''),
+            editedAt: Date.now(),
+            editedBy: currentUser.email
+          });
+        }
+      } else {
+        await addDoc(collection(db, 'scores'), {
+          ownerUid: currentUser.uid,
+          playerName: currentUser.playerName,
           tournament, date, score, verifyUrl,
           verified: result.ok,
           verifyNote: result.ok ? '' : (result.reason || ''),
-          editedAt: Date.now(),
-          editedBy: auth.email
-        };
+          submittedBy: currentUser.email,
+          submittedRole: currentUser.role,
+          createdAt: Date.now()
+        });
       }
-    } else {
-      all.push({
-        id: Date.now() + Math.random(),
-        ownerUserId: auth.id,
-        playerName: auth.playerName,
-        submittedBy: auth.email,
-        submittedRole: auth.role,
-        tournament, date, score, verifyUrl,
-        verified: result.ok,
-        verifyNote: result.ok ? '' : (result.reason || ''),
-      });
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = editingId ? 'Save Changes' : 'Submit & Verify';
+      alert('Could not save the round. Please try again.');
+      return;
     }
-    saveScores(all);
 
     btn.disabled = false;
-    btn.textContent = editingId !== null ? 'Save Changes' : 'Submit & Verify';
+    btn.textContent = editingId ? 'Save Changes' : 'Submit & Verify';
     editingId = null;
     document.getElementById('submitForm').reset();
     document.getElementById('submitModal').classList.remove('open');
-    renderMyScores();
-    renderLeaderboard();
   });
 
-  // LEADERBOARD
+  // ===== LEADERBOARD =====
   function groupScores() {
-    const scores = loadScores();
     const byPlayer = {};
-    scores.forEach(s => {
-      const key = s.playerName.trim().toLowerCase();
-      if (!byPlayer[key]) byPlayer[key] = { name: s.playerName.trim(), rounds: [], totalAdj: 0, verifiedCount: 0 };
+    allScores.forEach(s => {
+      const key = (s.playerName || '').trim().toLowerCase();
+      if (!key) return;
+      if (!byPlayer[key]) byPlayer[key] = { name: (s.playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0 };
       byPlayer[key].rounds.push(s);
       if (s.verified) {
         byPlayer[key].totalAdj += getAdj(s.score);
         byPlayer[key].verifiedCount += 1;
       }
     });
-    // Sort by most strokes off (most negative) at top
     return Object.values(byPlayer).sort((a, b) => a.totalAdj - b.totalAdj);
   }
 
@@ -2362,10 +2413,10 @@
       : '<span class="badge pending">Pending</span>';
     const editBtns = showEdit ? `
       <div class="round-actions">
-        <button class="icon-action" data-edit="${r.id}" title="Edit" aria-label="Edit">
+        <button class="icon-action" data-edit="${escapeHtml(r.id)}" title="Edit" aria-label="Edit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
-        <button class="icon-action" data-del="${r.id}" title="Remove" aria-label="Remove">
+        <button class="icon-action" data-del="${escapeHtml(r.id)}" title="Remove" aria-label="Remove">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
         </button>
       </div>
@@ -2410,16 +2461,17 @@
 
   function renderLeaderboard() {
     const wrap = document.getElementById('leaderboardWrap');
+    if (!wrap) return;
     const players = groupScores();
     if (!players.length) {
       wrap.innerHTML = '<div class="lb-empty">No scores submitted yet.</div>';
       return;
     }
     wrap.innerHTML = players.map((p, i) => {
-      const isOwnPlayer = auth && p.name.toLowerCase() === auth.playerName.toLowerCase();
+      const isOwnPlayer = currentUser && p.name.toLowerCase() === currentUser.playerName.toLowerCase();
       const canManage = isOwnPlayer || isCoach();
       const roundsHtml = p.rounds
-        .slice().sort((a,b) => a.date.localeCompare(b.date))
+        .slice().sort((a,b) => (a.date||'').localeCompare(b.date||''))
         .map(r => roundHtml(r, canManage))
         .join('');
       return `
@@ -2437,7 +2489,6 @@
         </div>
       `;
     }).join('');
-
     wrap.querySelectorAll('[data-toggle]').forEach(r => r.addEventListener('click', () => r.closest('.lb-item').classList.toggle('expanded')));
     wireRoundActions(wrap);
     if (document.getElementById('panel-leaderboard').classList.contains('active')) setTimeout(animateLeaderboardNumbers, 100);
@@ -2447,29 +2498,27 @@
     scope.querySelectorAll('[data-edit]').forEach(b => {
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        const id = parseFloat(b.dataset.edit);
-        const score = loadScores().find(s => s.id === id);
+        const score = allScores.find(s => s.id === b.dataset.edit);
         if (score && canEdit(score)) openSubmitModal(score);
       });
     });
     scope.querySelectorAll('[data-del]').forEach(b => {
-      b.addEventListener('click', (e) => {
+      b.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const id = parseFloat(b.dataset.del);
-        const score = loadScores().find(s => s.id === id);
+        const score = allScores.find(s => s.id === b.dataset.del);
         if (!score || !canEdit(score)) return;
         if (!confirm('Remove this round?')) return;
-        saveScores(loadScores().filter(s => s.id !== id));
-        renderMyScores();
-        renderLeaderboard();
+        try { await deleteDoc(doc(db, 'scores', b.dataset.del)); }
+        catch (err) { alert('Could not remove the round. Please try again.'); }
       });
     });
   }
 
-  // MY SCORES
+  // ===== MY SCORES =====
   function renderMyScores() {
     const wrap = document.getElementById('myScoresContent');
-    if (!auth) {
+    if (!wrap) return;
+    if (!currentUser) {
       wrap.innerHTML = `
         <div class="gate">
           <h3>Sign in to submit scores</h3>
@@ -2482,13 +2531,11 @@
       return;
     }
     if (isCoach()) {
-      const allScores = loadScores();
-      const t = loadTryouts();
-      const totalSignups = t.option1.length + t.option2.length;
+      const totalSignups = allSignups.length;
       wrap.innerHTML = `
         <div class="coach-dash-card">
           <h3>Coach Dashboard</h3>
-          <p>Signed in as <strong>${escapeHtml(auth.playerName)}</strong> · You have full edit access across all scores and tryout signups.</p>
+          <p>Signed in as <strong>${escapeHtml(currentUser.playerName)}</strong> · You have full edit access across all scores and tryout signups.</p>
         </div>
         <div class="group-header">At a Glance</div>
         <div class="group">
@@ -2499,34 +2546,28 @@
         </div>
         <div class="group-header">Manage</div>
         <div class="group">
-          <a class="link-row" data-go-tab="leaderboard">
-            <span>Edit any player's scores</span><span class="arrow">→</span>
-          </a>
-          <a class="link-row" data-go-tab="tryouts">
-            <span>Manage tryout signup list</span><span class="arrow">→</span>
-          </a>
+          <a class="link-row" data-go-tab="leaderboard"><span>Edit any player's scores</span><span class="arrow">→</span></a>
+          <a class="link-row" data-go-tab="tryouts"><span>Manage tryout signup list</span><span class="arrow">→</span></a>
         </div>
       `;
       wrap.querySelectorAll('[data-go-tab]').forEach(a => {
-        a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goTab); });
         a.style.cursor = 'pointer';
+        a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goTab); });
       });
       return;
     }
-    const myScores = loadScores().filter(s => s.playerName.toLowerCase() === auth.playerName.toLowerCase());
+    const myScores = allScores.filter(s => (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
     const verifiedRounds = myScores.filter(s => s.verified);
     const totalAdj = verifiedRounds.reduce((sum, s) => sum + getAdj(s.score), 0);
-
     const roundsHtml = myScores.length === 0
       ? `<div class="lb-empty">No rounds submitted yet — tap the green + button.</div>`
-      : `<div>` + myScores.slice().sort((a,b) => a.date.localeCompare(b.date)).map(r => roundHtml(r, true)).join('') + `</div>`;
-
+      : `<div>` + myScores.slice().sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(r => roundHtml(r, true)).join('') + `</div>`;
     wrap.innerHTML = `
       <div class="summary">
         <div>
-          <div class="summary-label">${auth.role === 'Parent' ? 'Parent of' : 'Signed in as'}</div>
-          <div class="summary-name">${escapeHtml(auth.playerName)}</div>
-          ${auth.role === 'Parent' ? `<div class="summary-sub">${escapeHtml(auth.email)}</div>` : ''}
+          <div class="summary-label">${currentUser.role === 'Parent' ? 'Parent of' : 'Signed in as'}</div>
+          <div class="summary-name">${escapeHtml(currentUser.playerName)}</div>
+          ${currentUser.role === 'Parent' ? `<div class="summary-sub">${escapeHtml(currentUser.email)}</div>` : ''}
         </div>
         <div class="summary-stats">
           <div class="big" data-target="${totalAdj}">0</div>
@@ -2544,74 +2585,60 @@
     if (document.getElementById('panel-myscores').classList.contains('active')) setTimeout(animateMyScoresNumber, 100);
   }
 
-  // TRYOUT SIGNUPS
-  const TRYOUTS_KEY = 'pcg-tryouts-v1';
-  const TRYOUT_MAX = 20;
-
-  function loadTryouts() {
-    try { return JSON.parse(localStorage.getItem(TRYOUTS_KEY)) || { option1: [], option2: [] }; }
-    catch (e) { return { option1: [], option2: [] }; }
-  }
-  function saveTryouts(t) { localStorage.setItem(TRYOUTS_KEY, JSON.stringify(t)); }
-
+  // ===== TRYOUTS =====
   function getMyTryoutOption() {
-    if (!auth) return null;
-    const t = loadTryouts();
-    const matches = (e) => e.playerName.toLowerCase() === auth.playerName.toLowerCase();
-    if (t.option1.some(matches)) return 'option1';
-    if (t.option2.some(matches)) return 'option2';
-    return null;
+    if (!currentUser) return null;
+    const key = currentUser.playerName.toLowerCase();
+    const mine = allSignups.find(s => s.id === key);
+    return mine ? mine.option : null;
   }
 
-  function signUpForTryout(option) {
-    if (!auth) return { ok: false, reason: 'You must sign in first.' };
-    const t = loadTryouts();
-    const matches = (e) => e.playerName.toLowerCase() === auth.playerName.toLowerCase();
-    t.option1 = t.option1.filter(e => !matches(e));
-    t.option2 = t.option2.filter(e => !matches(e));
-    if (t[option].length >= TRYOUT_MAX) return { ok: false, reason: 'That session is full.' };
-    t[option].push({
-      playerName: auth.playerName,
-      addedByUserId: auth.id,
-      addedByEmail: auth.email,
-      addedByRole: auth.role,
-      addedAt: Date.now()
-    });
-    saveTryouts(t);
-    return { ok: true };
+  async function signUpForTryout(option) {
+    if (!currentUser) return { ok: false, reason: 'You must sign in first.' };
+    const key = currentUser.playerName.toLowerCase();
+    const count = allSignups.filter(s => s.option === option && s.id !== key).length;
+    if (count >= TRYOUT_MAX) return { ok: false, reason: 'That session is full.' };
+    try {
+      await setDoc(doc(db, 'tryoutSignups', key), {
+        playerName: currentUser.playerName,
+        option,
+        addedByUid: currentUser.uid,
+        addedByRole: currentUser.role,
+        addedAt: Date.now()
+      });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: 'Could not sign up. Please try again.' };
+    }
   }
 
-  function cancelTryoutRegistration() {
-    if (!auth) return;
-    const t = loadTryouts();
-    const matches = (e) => e.playerName.toLowerCase() === auth.playerName.toLowerCase();
-    t.option1 = t.option1.filter(e => !matches(e));
-    t.option2 = t.option2.filter(e => !matches(e));
-    saveTryouts(t);
+  async function cancelTryoutRegistration() {
+    if (!currentUser) return;
+    const key = currentUser.playerName.toLowerCase();
+    try { await deleteDoc(doc(db, 'tryoutSignups', key)); }
+    catch (err) { alert('Could not cancel. Please try again.'); }
   }
 
-  function coachRemoveFromTryout(option, playerNameLower) {
+  async function coachRemoveFromTryout(playerKey) {
     if (!canManageTryouts()) return;
-    const t = loadTryouts();
-    t[option] = t[option].filter(e => e.playerName.toLowerCase() !== playerNameLower);
-    saveTryouts(t);
+    try { await deleteDoc(doc(db, 'tryoutSignups', playerKey)); }
+    catch (err) { alert('Could not remove that player. Please try again.'); }
   }
 
   function renderTryouts() {
     const wrap = document.getElementById('tryoutCards');
     const listWrap = document.getElementById('signupLists');
     if (!wrap) return;
-    const t = loadTryouts();
     const myOption = getMyTryoutOption();
+    const countFor = (opt) => allSignups.filter(s => s.option === opt).length;
 
     const card = (opt, label, date) => {
-      const count = t[opt].length;
+      const count = countFor(opt);
       const isMine = myOption === opt;
       const isFull = count >= TRYOUT_MAX && !isMine;
       const progress = Math.min(100, (count / TRYOUT_MAX) * 100);
-
       let button;
-      if (!auth) {
+      if (!currentUser) {
         button = `<button class="tryout-action primary" data-signin>Sign in to Register</button>`;
       } else if (isCoach()) {
         button = `<button class="tryout-action" disabled>Coach view</button>`;
@@ -2624,7 +2651,6 @@
       } else {
         button = `<button class="tryout-action primary" data-signup="${opt}">Sign Up</button>`;
       }
-
       const badge = isMine ? `
         <div class="tryout-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -2632,7 +2658,6 @@
           </svg>
           You're In
         </div>` : '';
-
       return `
         <div class="tryout-card ${isMine ? 'registered' : ''} ${isFull ? 'full' : ''}">
           ${badge}
@@ -2648,35 +2673,30 @@
     };
 
     wrap.innerHTML = card('option1', 'Option 1', 'July 15 &amp; 16') + card('option2', 'Option 2', 'July 22 &amp; 23');
-
     wrap.querySelectorAll('[data-signup]').forEach(b => {
-      b.addEventListener('click', () => {
-        const result = signUpForTryout(b.dataset.signup);
-        if (!result.ok) { alert(result.reason); return; }
-        renderTryouts();
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        const result = await signUpForTryout(b.dataset.signup);
+        if (!result.ok) { alert(result.reason); b.disabled = false; }
       });
     });
     wrap.querySelectorAll('[data-cancel]').forEach(b => {
-      b.addEventListener('click', () => {
-        if (confirm('Cancel your tryout registration?')) {
-          cancelTryoutRegistration();
-          renderTryouts();
-        }
+      b.addEventListener('click', async () => {
+        if (confirm('Cancel your tryout registration?')) await cancelTryoutRegistration();
       });
     });
     wrap.querySelectorAll('[data-signin]').forEach(b => {
       b.addEventListener('click', () => openAuthModal('signin'));
     });
 
-    // PUBLIC SIGNUP LIST
     if (listWrap) {
       const renderList = (opt, label) => {
-        const entries = t[opt].slice().sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+        const entries = allSignups.filter(s => s.option === opt).sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
         const itemsHtml = entries.length === 0
           ? `<li class="signup-name empty">No one yet</li>`
           : entries.map((e, i) => {
               const removeBtn = canManageTryouts()
-                ? `<button class="signup-remove" data-remove-opt="${opt}" data-remove-name="${escapeHtml(e.playerName.toLowerCase())}" title="Remove ${escapeHtml(e.playerName)}">×</button>`
+                ? `<button class="signup-remove" data-remove-key="${escapeHtml(e.id)}" title="Remove ${escapeHtml(e.playerName)}">×</button>`
                 : '';
               return `<li class="signup-name">
                 <span class="signup-num">${i + 1}.</span>
@@ -2695,20 +2715,30 @@
         `;
       };
       listWrap.innerHTML = renderList('option1', 'Option 1 · July 15 &amp; 16') + renderList('option2', 'Option 2 · July 22 &amp; 23');
-      listWrap.querySelectorAll('[data-remove-opt]').forEach(b => {
-        b.addEventListener('click', () => {
+      listWrap.querySelectorAll('[data-remove-key]').forEach(b => {
+        b.addEventListener('click', async () => {
           if (!confirm('Remove this player from the tryout list?')) return;
-          coachRemoveFromTryout(b.dataset.removeOpt, b.dataset.removeName);
-          renderTryouts();
+          await coachRemoveFromTryout(b.dataset.removeKey);
         });
       });
     }
   }
 
-  // Wire "Submit a Tournament Score" button on Tryouts page
   document.getElementById('submitFromTryout').addEventListener('click', () => openSubmitModal());
 
-  // INIT
+  // ===== REALTIME DATA =====
+  onSnapshot(collection(db, 'scores'), (snap) => {
+    allScores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderLeaderboard();
+    renderMyScores();
+  }, (err) => { console.warn('scores listener error', err); });
+
+  onSnapshot(collection(db, 'tryoutSignups'), (snap) => {
+    allSignups = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTryouts();
+  }, (err) => { console.warn('signups listener error', err); });
+
+  // ===== INIT =====
   renderAuthUI();
   renderLeaderboard();
   renderTryouts();
