@@ -589,10 +589,6 @@
     margin-top: 4px;
   }
 
-  /* Two-up input row (modal) */
-  .field-row { display: flex; gap: 10px; }
-  .field-row input { flex: 1; min-width: 0; }
-
   .round-actions { display: flex; gap: 6px; margin-left: 10px; }
   .icon-action {
     width: 30px; height: 30px;
@@ -1886,22 +1882,14 @@
           <input id="subTournament" type="text" required placeholder="e.g. AJGA Frisco Junior" />
         </div>
         <div class="modal-field">
-          <label for="subCourseCity">Course City</label>
-          <input id="subCourseCity" type="text" required placeholder="e.g. Frisco, TX" />
-          <div class="field-help">Used to look up that day's weather for the difficulty rating.</div>
-        </div>
-        <div class="modal-field">
-          <label for="subCourseRating">Course Rating &amp; Slope</label>
-          <div class="field-row">
-            <input id="subCourseRating" type="number" step="0.1" min="55" max="85" required placeholder="Rating · 72.1" />
-            <input id="subSlope" type="number" min="55" max="155" required placeholder="Slope · 131" />
-          </div>
-          <div class="field-help">Both are printed on the scorecard. They set the course's difficulty.</div>
+          <label for="subCourseRating">USGA Course Rating</label>
+          <input id="subCourseRating" type="number" step="0.1" min="60" max="80" required placeholder="e.g. 72.1" />
+          <div class="field-help">Printed on the scorecard. Used to set the 1–5 difficulty.</div>
         </div>
         <div class="modal-field">
           <label for="subUrl">Tournament Leaderboard Link</label>
           <input id="subUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/..." />
-          <div class="field-help">A public link we can use to verify your name &amp; score.</div>
+          <div class="field-help">Your name and score must match the linked sheet exactly.</div>
         </div>
         <div class="modal-actions">
           <button type="submit" class="primary" id="submitScoreBtn">Submit &amp; Verify</button>
@@ -2320,7 +2308,28 @@
   // ===== SCORE LOGIC =====
   const getAdj = s => s <= 72 ? -5 : s <= 79 ? -4 : s <= 89 ? -3 : s <= 99 ? -2 : -1;
 
-  async function verifyName(playerName, url) {
+  // Parse a CSV string into rows of cells (handles simple quoted cells).
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], cell = '', inQuote = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuote) {
+        if (ch === '"' && text[i+1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') { inQuote = false; }
+        else { cell += ch; }
+      } else if (ch === '"') { inQuote = true; }
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else if (ch === '\r') { /* skip */ }
+      else { cell += ch; }
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  // Verify: the player's name AND their exact score must appear on the same row of the linked sheet.
+  async function verifyNameAndScore(playerName, expectedScore, url) {
     try {
       const sheetIdMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
       if (!sheetIdMatch) return { ok: false, reason: 'Not a Google Sheets link' };
@@ -2328,100 +2337,36 @@
       const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
       const resp = await fetch(csvUrl);
       if (!resp.ok) return { ok: false, reason: 'Sheet not publicly accessible' };
-      const text = (await resp.text()).toLowerCase();
+      const rows = parseCsv(await resp.text());
       const nameLower = playerName.toLowerCase();
       const parts = nameLower.split(/\s+/).filter(Boolean);
-      if (text.includes(nameLower) || (parts.length > 1 && text.includes(parts[parts.length - 1]))) return { ok: true };
-      return { ok: false, reason: 'Name not found on sheet' };
+      const lastName = parts[parts.length - 1];
+      let foundName = false;
+      for (const row of rows) {
+        const rowLower = row.join(' ').toLowerCase();
+        const nameHit = rowLower.includes(nameLower) || (parts.length > 1 && rowLower.includes(lastName));
+        if (!nameHit) continue;
+        foundName = true;
+        // Score match: any cell on this row equals expectedScore (as integer).
+        const scoreHit = row.some(c => {
+          const n = parseInt(String(c).replace(/[^0-9-]/g, ''), 10);
+          return n === expectedScore;
+        });
+        if (scoreHit) return { ok: true };
+      }
+      return { ok: false, reason: foundName ? 'Score does not match the sheet' : 'Name not found on sheet' };
     } catch (e) { return { ok: false, reason: 'Could not verify automatically' }; }
   }
 
-  // ===== COURSE DIFFICULTY (weather + course rating/slope -> 1-5) =====
-  async function geocodeCity(city) {
-    try {
-      const resp = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
-      if (!resp.ok) return null;
-      const data = await resp.json();
-      if (!data.results || !data.results.length) return null;
-      return { lat: data.results[0].latitude, lon: data.results[0].longitude };
-    } catch (e) { return null; }
-  }
-
-  async function fetchWeather(lat, lon, date) {
-    const pick = (d, idx) => ({
-      tempMax: d.temperature_2m_max[idx],
-      tempMin: d.temperature_2m_min[idx],
-      windMax: d.wind_speed_10m_max[idx],
-      precip: d.precipitation_sum[idx]
-    });
-    try {
-      // Forecast API with past_days covers the last ~92 days reliably
-      const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&past_days=92&forecast_days=1`;
-      const resp = await fetch(fUrl);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.daily && data.daily.time) {
-          const idx = data.daily.time.indexOf(date);
-          if (idx !== -1) return pick(data.daily, idx);
-        }
-      }
-      // Fallback: archive API for older dates
-      const aUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,precipitation_sum&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
-      const aResp = await fetch(aUrl);
-      if (aResp.ok) {
-        const aData = await aResp.json();
-        if (aData.daily && aData.daily.time && aData.daily.time.length) return pick(aData.daily, 0);
-      }
-      return null;
-    } catch (e) { return null; }
-  }
-
-  function computeDifficulty({ courseRating, slope, weather }) {
-    // Course component (0-1): rating ~67(easy)-78(hard), slope ~105(easy)-155(hard)
-    let courseScore = 0.5;
-    const crN = courseRating ? Math.max(0, Math.min(1, (courseRating - 67) / 11)) : null;
-    const slN = slope ? Math.max(0, Math.min(1, (slope - 105) / 50)) : null;
-    if (crN != null && slN != null) courseScore = crN * 0.45 + slN * 0.55;
-    else if (crN != null) courseScore = crN;
-    else if (slN != null) courseScore = slN;
-    // Weather component (0-1): wind dominates, then rain, then temperature extremes
-    let weatherScore = 0;
-    if (weather) {
-      const windN = Math.max(0, Math.min(1, (weather.windMax || 0) / 35));
-      const precipN = Math.max(0, Math.min(1, (weather.precip || 0) / 0.6));
-      let tempN = 0;
-      if (weather.tempMax != null && weather.tempMax > 90) tempN = Math.min(1, (weather.tempMax - 90) / 20);
-      else if (weather.tempMin != null && weather.tempMin < 45) tempN = Math.min(1, (45 - weather.tempMin) / 25);
-      weatherScore = windN * 0.6 + precipN * 0.25 + tempN * 0.15;
-    }
-    const total = weather ? (courseScore * 0.65 + weatherScore * 0.35) : courseScore;
-    return Math.max(1, Math.min(5, Math.round(1 + total * 4)));
-  }
-
-  function weatherSummaryText(weather) {
-    if (!weather) return '';
-    const parts = [];
-    if (weather.windMax != null) {
-      const w = Math.round(weather.windMax);
-      const desc = w < 10 ? 'Calm' : w < 18 ? 'Breezy' : w < 28 ? 'Windy' : 'Severe wind';
-      parts.push(`${desc} ${w}mph`);
-    }
-    if (weather.precip != null && weather.precip >= 0.05) parts.push(`${weather.precip.toFixed(2)}" rain`);
-    if (weather.tempMax != null) parts.push(`${Math.round(weather.tempMax)}°F`);
-    return parts.join(' · ');
-  }
-
-  // Geocode + weather + difficulty for one round. Always returns a usable result.
-  async function assessDifficulty({ courseRating, slope, courseCity, date }) {
-    let weather = null;
-    if (courseCity) {
-      const geo = await geocodeCity(courseCity);
-      if (geo) weather = await fetchWeather(geo.lat, geo.lon, date);
-    }
-    return {
-      difficulty: computeDifficulty({ courseRating, slope, weather }),
-      weatherSummary: weatherSummaryText(weather)
-    };
+  // USGA course rating -> 1-5 difficulty. Typical TX junior tournament courses cluster 70-74.
+  function difficultyFromRating(rating) {
+    const r = parseFloat(rating);
+    if (!r || isNaN(r)) return null;
+    if (r < 70) return 1;
+    if (r < 71.5) return 2;
+    if (r < 73) return 3;
+    if (r < 74.5) return 4;
+    return 5;
   }
 
   // ===== SUBMIT MODAL =====
@@ -2462,9 +2407,7 @@
       subScoreInput.value = existing.score;
       document.getElementById('subDate').value = existing.date;
       document.getElementById('subTournament').value = existing.tournament;
-      document.getElementById('subCourseCity').value = existing.courseCity || '';
       document.getElementById('subCourseRating').value = existing.courseRating || '';
-      document.getElementById('subSlope').value = existing.slope || '';
       document.getElementById('subUrl').value = existing.verifyUrl;
     } else {
       subScoreInput.value = 78;
@@ -2474,9 +2417,7 @@
       else if (today > '2026-07-14') defaultDate = '2026-07-14';
       document.getElementById('subDate').value = defaultDate;
       document.getElementById('subTournament').value = '';
-      document.getElementById('subCourseCity').value = '';
       document.getElementById('subCourseRating').value = '';
-      document.getElementById('subSlope').value = '';
       document.getElementById('subUrl').value = '';
     }
     updateAdjPreview();
@@ -2491,10 +2432,8 @@
     const date = document.getElementById('subDate').value;
     const score = parseInt(subScoreInput.value, 10);
     const verifyUrl = document.getElementById('subUrl').value.trim();
-    const courseCity = document.getElementById('subCourseCity').value.trim();
     const courseRating = parseFloat(document.getElementById('subCourseRating').value) || null;
-    const slope = parseInt(document.getElementById('subSlope').value, 10) || null;
-    if (!tournament || !date || isNaN(score) || !verifyUrl || !courseCity || !courseRating || !slope) return;
+    if (!tournament || !date || isNaN(score) || !verifyUrl || !courseRating) return;
     if (date < '2026-05-06' || date > '2026-07-14') {
       alert('Tournament date must be between May 6 and July 14, 2026.');
       return;
@@ -2507,10 +2446,8 @@
       const existing = allScores.find(s => s.id === editingId);
       if (existing) targetPlayerName = existing.playerName;
     }
-    const result = await verifyName(targetPlayerName, verifyUrl);
-
-    btn.textContent = 'Rating course…';
-    const assessed = await assessDifficulty({ courseRating, slope, courseCity, date });
+    const result = await verifyNameAndScore(targetPlayerName, score, verifyUrl);
+    const difficulty = difficultyFromRating(courseRating);
 
     try {
       if (editingId) {
@@ -2518,9 +2455,8 @@
         if (existing && canEdit(existing)) {
           await updateDoc(doc(db, 'scores', editingId), {
             tournament, date, score, verifyUrl,
-            courseCity, courseRating, slope,
-            difficulty: assessed.difficulty,
-            weatherSummary: assessed.weatherSummary,
+            courseRating,
+            difficulty,
             verified: result.ok,
             verifyNote: result.ok ? '' : (result.reason || ''),
             editedAt: Date.now(),
@@ -2532,9 +2468,8 @@
           ownerUid: currentUser.uid,
           playerName: currentUser.playerName,
           tournament, date, score, verifyUrl,
-          courseCity, courseRating, slope,
-          difficulty: assessed.difficulty,
-          weatherSummary: assessed.weatherSummary,
+          courseRating,
+          difficulty,
           verified: result.ok,
           verifyNote: result.ok ? '' : (result.reason || ''),
           submittedBy: currentUser.email,
@@ -2581,16 +2516,8 @@
   }
 
   function diffDetailHtml(r) {
-    if (!r.difficulty) return '';
-    const parts = [];
-    if (r.courseRating || r.slope) {
-      const cr = r.courseRating ? `Rating ${r.courseRating}` : '';
-      const sl = r.slope ? `Slope ${r.slope}` : '';
-      parts.push([cr, sl].filter(Boolean).join(' · '));
-    }
-    if (r.weatherSummary) parts.push(escapeHtml(r.weatherSummary));
-    if (!parts.length) return '';
-    return `<div class="round-diff-detail">${parts.join('  ·  ')}</div>`;
+    if (!r.courseRating) return '';
+    return `<div class="round-diff-detail">USGA Rating ${r.courseRating}</div>`;
   }
 
   function roundHtml(r, showEdit) {
