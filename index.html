@@ -2582,7 +2582,11 @@
         if (coachView) byPlayer[key].rounds.push(s);
       }
     });
-    return Object.values(byPlayer).sort((a, b) => a.totalAdj - b.totalAdj);
+    let players = Object.values(byPlayer);
+    // Public leaderboard: only show players with at least one verified round.
+    // Coaches see everyone (including pending-only players) so they can manage.
+    if (!coachView) players = players.filter(p => p.verifiedCount > 0);
+    return players.sort((a, b) => a.totalAdj - b.totalAdj);
   }
 
   const DIFF_LABELS = { 1: 'Easy', 2: 'Mild', 3: 'Moderate', 4: 'Tough', 5: 'Brutal' };
@@ -2662,7 +2666,10 @@
     if (!wrap) return;
     const players = groupScores();
     if (!players.length) {
-      wrap.innerHTML = '<div class="lb-empty">No scores submitted yet.</div>';
+      const msg = isCoach()
+        ? 'No scores submitted yet.'
+        : 'No verified rounds yet. Submissions appear here once a coach verifies them.';
+      wrap.innerHTML = `<div class="lb-empty">${msg}</div>`;
       return;
     }
     wrap.innerHTML = players.map((p, i) => {
