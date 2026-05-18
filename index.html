@@ -560,6 +560,25 @@
   :root[data-theme="dark"] .badge.verified { color: var(--accent-hover); }
   .badge.pending { background: var(--warn-soft); color: var(--warn); }
 
+  /* COACH VERIFY TOGGLE — flips a round between Verified and Pending. */
+  .verify-toggle {
+    background: transparent;
+    border: 1px dashed var(--line);
+    color: var(--muted);
+    font-size: 9px; font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s var(--ease);
+    white-space: nowrap;
+  }
+  .verify-toggle.off { border-color: var(--accent); color: var(--accent); border-style: solid; }
+  .verify-toggle.off:hover { background: var(--accent); color: var(--on-accent); transform: translateY(-1px); }
+  .verify-toggle.on:hover { border-color: var(--warn); color: var(--warn); border-style: solid; }
+
   /* COURSE DIFFICULTY BADGE (1-5) */
   .diff-badge {
     display: inline-flex; align-items: center; gap: 5px;
@@ -1874,8 +1893,8 @@
         </div>
         <div class="modal-field">
           <label for="subDate">Date</label>
-          <input id="subDate" type="date" required min="2026-05-06" max="2026-07-14" />
-          <div class="field-help">Tournaments between May 6 – July 14, 2026 only.</div>
+          <input id="subDate" type="date" required min="2026-01-01" max="2026-07-14" />
+          <div class="field-help">Tournaments between January 1 – July 14, 2026 only.</div>
         </div>
         <div class="modal-field">
           <label for="subTournament">Event / Tournament</label>
@@ -2413,7 +2432,7 @@
       subScoreInput.value = 78;
       const today = new Date().toISOString().split('T')[0];
       let defaultDate = today;
-      if (today < '2026-05-06') defaultDate = '2026-05-06';
+      if (today < '2026-01-01') defaultDate = '2026-01-01';
       else if (today > '2026-07-14') defaultDate = '2026-07-14';
       document.getElementById('subDate').value = defaultDate;
       document.getElementById('subTournament').value = '';
@@ -2434,8 +2453,8 @@
     const verifyUrl = document.getElementById('subUrl').value.trim();
     const courseRating = parseFloat(document.getElementById('subCourseRating').value) || null;
     if (!tournament || !date || isNaN(score) || !verifyUrl || !courseRating) return;
-    if (date < '2026-05-06' || date > '2026-07-14') {
-      alert('Tournament date must be between May 6 and July 14, 2026.');
+    if (date < '2026-01-01' || date > '2026-07-14') {
+      alert('Tournament date must be between January 1 and July 14, 2026.');
       return;
     }
     const btn = document.getElementById('submitScoreBtn');
@@ -2536,7 +2555,10 @@
       </div>
     ` : '';
     const submitterLine = isCoach() && r.submittedBy
-      ? `<div class="round-submitter">Submitted by ${escapeHtml(r.submittedRole || 'user')} · ${escapeHtml(r.submittedBy)}</div>`
+      ? `<div class="round-submitter">Submitted by ${escapeHtml(r.submittedRole || 'user')} · ${escapeHtml(r.submittedBy)}${r.verifiedByCoach ? ` · Coach-verified${r.verifiedBy ? ' by ' + escapeHtml(r.verifiedBy) : ''}` : ''}</div>`
+      : '';
+    const coachVerifyBtn = isCoach()
+      ? `<button class="verify-toggle ${r.verified ? 'on' : 'off'}" data-verify="${escapeHtml(r.id)}" title="${r.verified ? 'Click to mark Pending' : 'Click to force Verify'}">${r.verified ? 'Unverify' : 'Force Verify'}</button>`
       : '';
     return `
       <div class="round">
@@ -2556,6 +2578,7 @@
             <span class="dot"></span>
             ${badge}
             ${diffBadgeHtml(r)}
+            ${coachVerifyBtn}
           </div>
           ${diffDetailHtml(r)}
           ${submitterLine}
@@ -2626,6 +2649,24 @@
         if (!confirm('Remove this round?')) return;
         try { await deleteDoc(doc(db, 'scores', b.dataset.del)); }
         catch (err) { alert('Could not remove the round. Please try again.'); }
+      });
+    });
+    scope.querySelectorAll('[data-verify]').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!isCoach()) return;
+        const score = allScores.find(s => s.id === b.dataset.verify);
+        if (!score) return;
+        const newVerified = !score.verified;
+        try {
+          await updateDoc(doc(db, 'scores', b.dataset.verify), {
+            verified: newVerified,
+            verifyNote: newVerified ? '' : (score.verifyNote || 'Marked pending by coach'),
+            verifiedByCoach: newVerified,
+            verifiedBy: newVerified ? currentUser.email : null,
+            verifiedAt: newVerified ? Date.now() : null
+          });
+        } catch (err) { alert('Could not update verification. Please try again.'); }
       });
     });
   }
