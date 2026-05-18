@@ -560,6 +560,17 @@
   :root[data-theme="dark"] .badge.verified { color: var(--accent-hover); }
   .badge.pending { background: var(--warn-soft); color: var(--warn); }
 
+  .pending-notice {
+    background: var(--warn-soft);
+    color: var(--warn);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+
   /* COACH VERIFY TOGGLE — flips a round between Verified and Pending. */
   .verify-toggle {
     background: transparent;
@@ -1891,6 +1902,11 @@
             <span class="adj-preview-value" id="adjPreviewValue">—</span>
           </div>
         </div>
+        <div class="modal-field coach-only" id="subPlayerNameField" style="display:none;">
+          <label for="subPlayerName">Player Name (coach edit)</label>
+          <input id="subPlayerName" type="text" placeholder="Full name" autocomplete="off" />
+          <div class="field-help">Coaches only — fix a typo or reassign to a different player.</div>
+        </div>
         <div class="modal-field">
           <label for="subDate">Date</label>
           <input id="subDate" type="date" required min="2026-01-01" max="2026-07-14" />
@@ -2422,6 +2438,15 @@
     editingId = existing ? existing.id : null;
     document.getElementById('submitTitle').textContent = existing ? 'Edit Round' : 'Submit a Round';
     document.getElementById('submitScoreBtn').textContent = existing ? 'Save Changes' : 'Submit & Verify';
+    const nameField = document.getElementById('subPlayerNameField');
+    const nameInput = document.getElementById('subPlayerName');
+    if (existing && isCoach()) {
+      nameField.style.display = '';
+      nameInput.value = existing.playerName || '';
+    } else {
+      nameField.style.display = 'none';
+      nameInput.value = '';
+    }
     if (existing) {
       subScoreInput.value = existing.score;
       document.getElementById('subDate').value = existing.date;
@@ -2464,23 +2489,42 @@
     if (editingId) {
       const existing = allScores.find(s => s.id === editingId);
       if (existing) targetPlayerName = existing.playerName;
+      if (isCoach()) {
+        const coachName = document.getElementById('subPlayerName').value.trim();
+        if (coachName) targetPlayerName = coachName;
+      }
     }
     const result = await verifyNameAndScore(targetPlayerName, score, verifyUrl);
     const difficulty = difficultyFromRating(courseRating);
+
+    // Cross-check: same verifyUrl with a different date elsewhere -> Pending (suspect entry).
+    let finalVerified = result.ok;
+    let finalNote = result.ok ? '' : (result.reason || '');
+    const conflicts = allScores.filter(s => s.id !== editingId && s.verifyUrl === verifyUrl && s.date !== date);
+    if (conflicts.length > 0) {
+      finalVerified = false;
+      finalNote = `Date does not match other submissions for this tournament (${conflicts[0].date}).`;
+    }
 
     try {
       if (editingId) {
         const existing = allScores.find(s => s.id === editingId);
         if (existing && canEdit(existing)) {
-          await updateDoc(doc(db, 'scores', editingId), {
+          const payload = {
             tournament, date, score, verifyUrl,
             courseRating,
             difficulty,
-            verified: result.ok,
-            verifyNote: result.ok ? '' : (result.reason || ''),
+            verified: finalVerified,
+            verifyNote: finalNote,
             editedAt: Date.now(),
             editedBy: currentUser.email
-          });
+          };
+          if (isCoach() && targetPlayerName && targetPlayerName.toLowerCase() !== (existing.playerName || '').toLowerCase()) {
+            payload.playerName = targetPlayerName;
+            payload.renamedFrom = existing.playerName || null;
+            payload.renamedBy = currentUser.email;
+          }
+          await updateDoc(doc(db, 'scores', editingId), payload);
         }
       } else {
         await addDoc(collection(db, 'scores'), {
@@ -2489,8 +2533,8 @@
           tournament, date, score, verifyUrl,
           courseRating,
           difficulty,
-          verified: result.ok,
-          verifyNote: result.ok ? '' : (result.reason || ''),
+          verified: finalVerified,
+          verifyNote: finalNote,
           submittedBy: currentUser.email,
           submittedRole: currentUser.role,
           createdAt: Date.now()
@@ -2505,22 +2549,37 @@
 
     btn.disabled = false;
     btn.textContent = editingId ? 'Save Changes' : 'Submit & Verify';
+    const wasEdit = !!editingId;
     editingId = null;
     document.getElementById('submitForm').reset();
     document.getElementById('submitModal').classList.remove('open');
+
+    // Feedback alert: players/parents no longer see pending rounds on the leaderboard,
+    // so they need to know whether their entry counted right away.
+    if (!isCoach() || !wasEdit) {
+      if (finalVerified) {
+        alert('Score verified and added to the leaderboard.');
+      } else {
+        alert('Score submitted — pending coach review.\n\nReason: ' + (finalNote || 'verification failed') + '\n\nYour coach can manually verify it if everything checks out.');
+      }
+    }
   });
 
   // ===== LEADERBOARD =====
   function groupScores() {
     const byPlayer = {};
+    const coachView = isCoach();
     allScores.forEach(s => {
       const key = (s.playerName || '').trim().toLowerCase();
       if (!key) return;
-      if (!byPlayer[key]) byPlayer[key] = { name: (s.playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0 };
-      byPlayer[key].rounds.push(s);
+      if (!byPlayer[key]) byPlayer[key] = { name: (s.playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0, pendingCount: 0 };
       if (s.verified) {
+        byPlayer[key].rounds.push(s);
         byPlayer[key].totalAdj += getAdj(s.score);
         byPlayer[key].verifiedCount += 1;
+      } else {
+        byPlayer[key].pendingCount += 1;
+        if (coachView) byPlayer[key].rounds.push(s);
       }
     });
     return Object.values(byPlayer).sort((a, b) => a.totalAdj - b.totalAdj);
@@ -2619,7 +2678,7 @@
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-info">
               <div class="lb-name">${escapeHtml(p.name)}</div>
-              <div class="lb-meta">${p.verifiedCount} verified · ${p.rounds.length - p.verifiedCount} pending</div>
+              <div class="lb-meta">${p.verifiedCount} verified · ${p.pendingCount} pending</div>
             </div>
             <div class="lb-total" data-target="${p.totalAdj}">${p.totalAdj}</div>
             <div class="lb-chevron">›</div>
@@ -2671,6 +2730,45 @@
     });
   }
 
+  // Re-verify pending rounds: iterates verified=false scores, re-runs verifyNameAndScore,
+  // promotes any that now pass. Skips rounds with a date conflict (coach must resolve manually).
+  let reverifyInFlight = false;
+  async function reverifyAllPending(manual) {
+    if (!isCoach()) return;
+    if (reverifyInFlight) return;
+    reverifyInFlight = true;
+    const label = document.getElementById('reverifyLabel');
+    const pending = allScores.filter(s => !s.verified);
+    if (pending.length === 0) {
+      if (manual) alert('No pending rounds to re-verify.');
+      reverifyInFlight = false;
+      return;
+    }
+    if (label) label.textContent = `Re-verifying ${pending.length} round(s)…`;
+    let promoted = 0;
+    for (const s of pending) {
+      try {
+        const conflicts = allScores.filter(x => x.id !== s.id && x.verifyUrl === s.verifyUrl && x.date !== s.date);
+        if (conflicts.length > 0) continue;
+        const r = await verifyNameAndScore(s.playerName, s.score, s.verifyUrl);
+        if (r.ok) {
+          await updateDoc(doc(db, 'scores', s.id), {
+            verified: true,
+            verifyNote: '',
+            reverifiedAt: Date.now()
+          });
+          promoted++;
+        }
+      } catch (e) { /* ignore individual failures */ }
+    }
+    localStorage.setItem('pcg-last-reverify', String(Date.now()));
+    const ts = document.getElementById('lastReverifyTs');
+    if (ts) ts.textContent = new Date().toLocaleString();
+    if (label) label.textContent = `Re-verify pending rounds (${allScores.filter(s => !s.verified).length})`;
+    reverifyInFlight = false;
+    if (manual) alert(`Re-verification done. ${promoted} round(s) newly verified.`);
+  }
+
   // ===== MY SCORES =====
   function renderMyScores() {
     const wrap = document.getElementById('myScoresContent');
@@ -2701,6 +2799,11 @@
           <div class="row"><span class="label">Verified rounds</span><span class="value">${allScores.filter(s => s.verified).length}</span></div>
           <div class="row"><span class="label">Pending review</span><span class="value">${allScores.filter(s => !s.verified).length}</span></div>
         </div>
+        <div class="group-header">Verification</div>
+        <div class="group">
+          <a class="link-row" id="reverifyBtn"><span id="reverifyLabel">Re-verify pending rounds (${allScores.filter(s => !s.verified).length})</span><span class="arrow">→</span></a>
+          <div class="row"><span class="label">Last automatic check</span><span class="value" id="lastReverifyTs">—</span></div>
+        </div>
         <div class="group-header">Manage</div>
         <div class="group">
           <a class="link-row" data-go-tab="leaderboard"><span>Edit any player's scores</span><span class="arrow">→</span></a>
@@ -2711,14 +2814,30 @@
         a.style.cursor = 'pointer';
         a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goTab); });
       });
+      const rbtn = document.getElementById('reverifyBtn');
+      if (rbtn) {
+        rbtn.style.cursor = 'pointer';
+        rbtn.addEventListener('click', (e) => { e.preventDefault(); reverifyAllPending(true); });
+      }
+      const tsEl = document.getElementById('lastReverifyTs');
+      const lastTs = parseInt(localStorage.getItem('pcg-last-reverify') || '0', 10);
+      if (tsEl) tsEl.textContent = lastTs ? new Date(lastTs).toLocaleString() : 'never';
+      if (Date.now() - lastTs > 24 * 60 * 60 * 1000) {
+        setTimeout(() => reverifyAllPending(false), 400);
+      }
       return;
     }
-    const myScores = allScores.filter(s => (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
-    const verifiedRounds = myScores.filter(s => s.verified);
+    const allMyScores = allScores.filter(s => (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
+    const verifiedRounds = allMyScores.filter(s => s.verified);
+    const pendingCount = allMyScores.length - verifiedRounds.length;
     const totalAdj = verifiedRounds.reduce((sum, s) => sum + getAdj(s.score), 0);
-    const roundsHtml = myScores.length === 0
-      ? `<div class="lb-empty">No rounds submitted yet — tap the green + button.</div>`
-      : `<div>` + myScores.slice().sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(r => roundHtml(r, true)).join('') + `</div>`;
+    const visibleRounds = verifiedRounds;
+    const pendingNotice = pendingCount > 0
+      ? `<div class="pending-notice">${pendingCount} round${pendingCount === 1 ? '' : 's'} pending coach review. They will appear here once verified.</div>`
+      : '';
+    const roundsHtml = visibleRounds.length === 0
+      ? `<div class="lb-empty">No verified rounds yet — tap the green + button to submit one.</div>`
+      : `<div>` + visibleRounds.slice().sort((a,b) => (a.date||'').localeCompare(b.date||'')).map(r => roundHtml(r, true)).join('') + `</div>`;
     wrap.innerHTML = `
       <div class="summary">
         <div>
@@ -2734,6 +2853,7 @@
       <div class="actions">
         <button class="primary" id="openSubmit">Submit a Round</button>
       </div>
+      ${pendingNotice}
       <div class="group-header">Your Rounds</div>
       <div class="group">${roundsHtml}</div>
     `;
