@@ -1691,14 +1691,14 @@
 
     <div class="group-header">Format</div>
     <div class="group">
-      <div class="row"><span class="label">Day 1</span><span class="value">18 holes at Ridgeview Ranch GC <small>Walking</small></span></div>
+      <div class="row"><span class="label">Day 1</span><span class="value">18 holes at Indian Creek GC <small>Walking</small></span></div>
       <div class="row"><span class="label">Day 2</span><span class="value">Skills evaluation at PGA <small>10 holes at The Swing · Putting · Chipping</small></span></div>
     </div>
 
     <div class="group-header">Cost</div>
     <div class="group">
       <div class="row feature"><span class="label">Total</span><span class="value">$40</span></div>
-      <div class="row"><span class="label">Ridgeview Ranch GC · 18 holes</span><span class="value">$20</span></div>
+      <div class="row"><span class="label">Indian Creek GC · 18 holes</span><span class="value">$20</span></div>
       <div class="row"><span class="label">The Swing · 10 holes</span><span class="value">$20</span></div>
     </div>
 
@@ -1711,7 +1711,7 @@
     <div class="group-header">Summer Tournaments · Optional but Encouraged</div>
     <div class="summer-card">
       <h4>Lower your tryout score</h4>
-      <p>Play summer tournaments to earn stroke adjustments. Each verified round shaves strokes off your Ridgeview Ranch GC tryout score. Only affects making the team, not Varsity vs. JV.</p>
+      <p>Play summer tournaments to earn stroke adjustments. Each verified round shaves strokes off your Indian Creek GC tryout score. Only affects making the team, not Varsity vs. JV.</p>
       <button type="button" class="primary" id="submitFromTryout">Submit a Tournament Score</button>
     </div>
 
@@ -1908,23 +1908,22 @@
           <div class="field-help">Coaches only — fix a typo or reassign to a different player.</div>
         </div>
         <div class="modal-field">
-          <label for="subDate">Date</label>
-          <input id="subDate" type="date" required min="2026-01-01" max="2026-07-14" />
-          <div class="field-help">Tournaments between January 1 – July 14, 2026 only.</div>
-        </div>
-        <div class="modal-field">
-          <label for="subTournament">Event / Tournament</label>
-          <input id="subTournament" type="text" required placeholder="e.g. AJGA Frisco Junior" />
-        </div>
-        <div class="modal-field">
-          <label for="subCourseRating">USGA Course Rating</label>
-          <input id="subCourseRating" type="number" step="0.1" min="60" max="80" required placeholder="e.g. 72.1" />
-          <div class="field-help">Printed on the scorecard. Used to set the 1–5 difficulty.</div>
-        </div>
-        <div class="modal-field">
           <label for="subUrl">Tournament Leaderboard Link</label>
           <input id="subUrl" type="url" required placeholder="https://docs.google.com/spreadsheets/..." />
-          <div class="field-help">Your name and score must match the linked sheet exactly.</div>
+          <div class="field-help">Paste the public results link. Your name &amp; score must match it.</div>
+        </div>
+        <div class="modal-field coach-field" id="fieldTournament" style="display:none;">
+          <label for="subTournament">Event / Tournament <small>(coach)</small></label>
+          <input id="subTournament" type="text" placeholder="e.g. AJGA Frisco Junior" autocomplete="off" />
+        </div>
+        <div class="modal-field coach-field" id="fieldDate" style="display:none;">
+          <label for="subDate">Date <small>(coach)</small></label>
+          <input id="subDate" type="date" min="2026-01-01" max="2026-12-31" />
+        </div>
+        <div class="modal-field coach-field" id="fieldRating" style="display:none;">
+          <label for="subCourseRating">USGA Course Rating <small>(coach)</small></label>
+          <input id="subCourseRating" type="number" step="0.1" min="60" max="80" placeholder="e.g. 72.1" />
+          <div class="field-help">Sets the 1–5 difficulty badge. Optional.</div>
         </div>
         <div class="modal-actions">
           <button type="submit" class="primary" id="submitScoreBtn">Submit &amp; Verify</button>
@@ -2447,19 +2446,20 @@
       nameField.style.display = 'none';
       nameInput.value = '';
     }
+    // Players enter only Score + Link. Tournament / Date / Rating are coach-only extras.
+    document.querySelectorAll('#submitModal .coach-field').forEach(f => {
+      f.style.display = isCoach() ? '' : 'none';
+    });
+    const today = new Date().toISOString().split('T')[0];
     if (existing) {
       subScoreInput.value = existing.score;
-      document.getElementById('subDate').value = existing.date;
-      document.getElementById('subTournament').value = existing.tournament;
+      document.getElementById('subDate').value = existing.date || today;
+      document.getElementById('subTournament').value = existing.tournament || '';
       document.getElementById('subCourseRating').value = existing.courseRating || '';
       document.getElementById('subUrl').value = existing.verifyUrl;
     } else {
       subScoreInput.value = 78;
-      const today = new Date().toISOString().split('T')[0];
-      let defaultDate = today;
-      if (today < '2026-01-01') defaultDate = '2026-01-01';
-      else if (today > '2026-07-14') defaultDate = '2026-07-14';
-      document.getElementById('subDate').value = defaultDate;
+      document.getElementById('subDate').value = today;
       document.getElementById('subTournament').value = '';
       document.getElementById('subCourseRating').value = '';
       document.getElementById('subUrl').value = '';
@@ -2472,14 +2472,15 @@
   document.getElementById('submitForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentUser) return;
-    const tournament = document.getElementById('subTournament').value.trim();
-    const date = document.getElementById('subDate').value;
     const score = parseInt(subScoreInput.value, 10);
     const verifyUrl = document.getElementById('subUrl').value.trim();
+    // Players only provide score + link. Tournament / date / rating are coach-only and optional.
+    const todayStr = new Date().toISOString().split('T')[0];
+    const tournament = document.getElementById('subTournament').value.trim();
+    const date = document.getElementById('subDate').value || todayStr;
     const courseRating = parseFloat(document.getElementById('subCourseRating').value) || null;
-    if (!tournament || !date || isNaN(score) || !verifyUrl || !courseRating) return;
-    if (date < '2026-01-01' || date > '2026-07-14') {
-      alert('Tournament date must be between January 1 and July 14, 2026.');
+    if (isNaN(score) || !verifyUrl) {
+      alert('Please enter your score and the tournament results link.');
       return;
     }
     const btn = document.getElementById('submitScoreBtn');
@@ -2496,15 +2497,8 @@
     }
     const result = await verifyNameAndScore(targetPlayerName, score, verifyUrl);
     const difficulty = difficultyFromRating(courseRating);
-
-    // Cross-check: same verifyUrl with a different date elsewhere -> Pending (suspect entry).
-    let finalVerified = result.ok;
-    let finalNote = result.ok ? '' : (result.reason || '');
-    const conflicts = allScores.filter(s => s.id !== editingId && s.verifyUrl === verifyUrl && s.date !== date);
-    if (conflicts.length > 0) {
-      finalVerified = false;
-      finalNote = `Date does not match other submissions for this tournament (${conflicts[0].date}).`;
-    }
+    const finalVerified = result.ok;
+    const finalNote = result.ok ? '' : (result.reason || '');
 
     try {
       if (editingId) {
@@ -2627,7 +2621,7 @@
       <div class="round">
         <div class="round-info">
           <div class="round-event">
-            <span class="event-name">${escapeHtml(r.tournament)}</span>
+            <span class="event-name">${escapeHtml(r.tournament || 'Tournament')}</span>
             <a class="round-link" href="${escapeHtml(r.verifyUrl)}" target="_blank" rel="noopener" title="Open tournament leaderboard">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -2755,8 +2749,6 @@
     let promoted = 0;
     for (const s of pending) {
       try {
-        const conflicts = allScores.filter(x => x.id !== s.id && x.verifyUrl === s.verifyUrl && x.date !== s.date);
-        if (conflicts.length > 0) continue;
         const r = await verifyNameAndScore(s.playerName, s.score, s.verifyUrl);
         if (r.ok) {
           await updateDoc(doc(db, 'scores', s.id), {
