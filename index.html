@@ -1356,6 +1356,16 @@
     margin-top: 2px;
   }
 
+  /* COACH ADD PLAYER (Tryouts) */
+  .coach-add-row { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .coach-add-row input, .coach-add-row select {
+    flex: 1 1 160px; min-width: 140px; padding: 11px 13px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font-size: 14px; font-family: inherit;
+  }
+  .coach-add-row input:focus, .coach-add-row select:focus { outline: none; border-color: var(--accent); }
+  .coach-add-row .tryout-action { flex: 0 0 auto; width: auto; padding: 11px 20px; margin: 0; }
+
   /* COACH CARDS (Contact tab) */
   .coach-cards {
     display: grid;
@@ -1692,14 +1702,14 @@
     <div class="group-header">Format</div>
     <div class="group">
       <div class="row"><span class="label">Day 1</span><span class="value">18 holes at Indian Creek GC (Creeks Course) <small>Walking</small></span></div>
-      <div class="row"><span class="label">Day 2</span><span class="value">Skills evaluation at PGA <small>10 holes at The Swing · Putting · Chipping</small></span></div>
+      <div class="row"><span class="label">Day 2</span><span class="value">Skills evaluation at PGA <small>The Ronny (FISD practice area) · 3–5 PM · Putting · Chipping · Short game</small></span></div>
     </div>
 
     <div class="group-header">Cost</div>
     <div class="group">
-      <div class="row feature"><span class="label">Total</span><span class="value">$40</span></div>
+      <div class="row feature"><span class="label">Total</span><span class="value">$20</span></div>
       <div class="row"><span class="label">Indian Creek GC · 18 holes</span><span class="value">$20</span></div>
-      <div class="row"><span class="label">The Swing · 10 holes</span><span class="value">$20</span></div>
+      <div class="row"><span class="label">The Ronny · practice area</span><span class="value">Free</span></div>
     </div>
 
     <div class="group-header">Team Selection</div>
@@ -2901,6 +2911,28 @@
     catch (err) { alert('Could not remove that player. Please try again.'); }
   }
 
+  async function coachAddToTryout(option, rawName) {
+    if (!canManageTryouts()) return { ok: false, reason: 'Coaches only.' };
+    const name = (rawName || '').trim();
+    if (!name) return { ok: false, reason: 'Please enter a player name.' };
+    const key = name.toLowerCase();
+    const already = allSignups.find(s => s.id === key);
+    const count = allSignups.filter(s => s.option === option && s.id !== key).length;
+    if (count >= TRYOUT_MAX) return { ok: false, reason: 'That session is full.' };
+    try {
+      await setDoc(doc(db, 'tryoutSignups', key), {
+        playerName: name,
+        option,
+        addedByUid: currentUser.uid,
+        addedByRole: currentUser.role,
+        addedAt: already ? (already.addedAt || Date.now()) : Date.now()
+      });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: 'Could not add that player. Please try again.' };
+    }
+  }
+
   function renderTryouts() {
     const wrap = document.getElementById('tryoutCards');
     const listWrap = document.getElementById('signupLists');
@@ -2995,7 +3027,16 @@
           </div>
         `;
       };
-      listWrap.innerHTML = renderList('option1', 'Option 1 · July 14 &amp; 16') + renderList('option2', 'Option 2 · July 21 &amp; 23');
+      const coachAddHtml = canManageTryouts() ? `
+        <div class="coach-add-row">
+          <input id="coachAddName" type="text" placeholder="Add a player by full name" autocomplete="off" />
+          <select id="coachAddOption" aria-label="Tryout option">
+            <option value="option1">Option 1 · Jul 14 &amp; 16</option>
+            <option value="option2">Option 2 · Jul 21 &amp; 23</option>
+          </select>
+          <button id="coachAddBtn" class="tryout-action primary" type="button">Add Player</button>
+        </div>` : '';
+      listWrap.innerHTML = coachAddHtml + renderList('option1', 'Option 1 · July 14 &amp; 16') + renderList('option2', 'Option 2 · July 21 &amp; 23');
       listWrap.querySelectorAll('[data-remove-key]').forEach(b => {
         b.addEventListener('click', async () => {
           if (!confirm('Remove this player from the tryout list?')) return;
@@ -3008,6 +3049,21 @@
           await cancelTryoutRegistration();
         });
       });
+      const coachAddBtn = document.getElementById('coachAddBtn');
+      if (coachAddBtn) {
+        const doCoachAdd = async () => {
+          const nameEl = document.getElementById('coachAddName');
+          const optEl = document.getElementById('coachAddOption');
+          coachAddBtn.disabled = true;
+          const res = await coachAddToTryout(optEl.value, nameEl.value);
+          if (!res.ok) { alert(res.reason); }
+          else { nameEl.value = ''; nameEl.focus(); }
+          coachAddBtn.disabled = false;
+        };
+        coachAddBtn.addEventListener('click', doCoachAdd);
+        const cNameEl = document.getElementById('coachAddName');
+        if (cNameEl) cNameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doCoachAdd(); } });
+      }
     }
   }
 
