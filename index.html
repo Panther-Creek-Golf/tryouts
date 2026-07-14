@@ -1366,6 +1366,92 @@
   .coach-add-row input:focus, .coach-add-row select:focus { outline: none; border-color: var(--accent); }
   .coach-add-row .tryout-action { flex: 0 0 auto; width: auto; padding: 11px 20px; margin: 0; }
 
+  /* COACH TRYOUT SCORE ENTRY */
+  .tryout-entry-hint { padding: 14px 20px 4px; font-size: 13px; color: var(--muted); }
+  .ten-row {
+    display: grid;
+    grid-template-columns: 1fr 90px 84px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ten-row:last-child { border-bottom: none; }
+  .ten-name { font-size: 15px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ten-adj { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .ten-row input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .ten-row input:focus { outline: none; border-color: var(--accent); }
+  .ten-save {
+    padding: 10px 0;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+  }
+  .ten-save:hover { filter: brightness(1.1); }
+  .ten-save:disabled { opacity: 0.6; cursor: default; }
+  .ten-save.saved { background: var(--good, #16a34a); }
+  .ten-add-row { display: grid; grid-template-columns: 1fr 90px 84px; gap: 10px; padding: 14px 20px; }
+  .ten-add-row input[type="text"] { text-align: left; font-weight: 600; }
+
+  /* IMPORT TOURNAMENT MODAL */
+  #impText {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  #impText:focus { outline: none; border-color: var(--accent); }
+  .imp-row {
+    display: grid;
+    grid-template-columns: 24px 1fr 80px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .imp-row:last-child { border-bottom: none; }
+  .imp-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+  .imp-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .imp-detail { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+  .imp-row input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .imp-empty { padding: 10px 0; font-size: 13px; color: var(--muted); }
+
+  /* FINAL SCORE ON LEADERBOARD */
+  .lb-total-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .lb-total-label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+  .round.tryout-round { background: var(--surface-2); border-left: 3px solid var(--accent); }
+
   /* COACH CARDS (Contact tab) */
   .coach-cards {
     display: grid;
@@ -1674,7 +1760,7 @@
   <!-- LEADERBOARD -->
   <div class="panel active" id="panel-leaderboard">
     <h2>Leaderboard</h2>
-    <p class="lede">Ranked by total strokes off. Tap a player to see their rounds.</p>
+    <p class="lede" id="leaderboardLede">Ranked by total strokes off. Tap a player to see their rounds.</p>
     <div class="group" id="leaderboardWrap">
       <div class="lb-empty">No scores submitted yet.</div>
     </div>
@@ -1940,6 +2026,41 @@
           <button type="button" class="modal-close" id="cancelSubmit">Cancel</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT TOURNAMENT MODAL (coach) -->
+<div class="modal-backdrop" id="importModal">
+  <div class="modal">
+    <div class="modal-glow"></div>
+    <div class="modal-inner">
+      <div class="modal-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </div>
+      <h2>Import Tournament Results</h2>
+      <p class="sub">Open the leaderboard in TX HS Golf / iWanamaker, select all, copy, and paste below. Every roster player found gets a verified round.</p>
+      <div class="modal-field">
+        <label for="impTournament">Event / Tournament</label>
+        <input id="impTournament" type="text" placeholder="e.g. NTPGA Summer Series" autocomplete="off" />
+      </div>
+      <div class="modal-field">
+        <label for="impDate">Date</label>
+        <input id="impDate" type="date" min="2026-01-01" max="2026-12-31" />
+      </div>
+      <div class="modal-field">
+        <label for="impText">Pasted Leaderboard</label>
+        <textarea id="impText" rows="6" placeholder="Paste the copied leaderboard text here…"></textarea>
+        <div class="field-help">Names are matched against your roster (signups + anyone with a round). Review the preview before importing.</div>
+      </div>
+      <div id="impPreview"></div>
+      <div class="modal-actions">
+        <button type="button" class="primary" id="impParseBtn">Preview Matches</button>
+        <button type="button" class="primary" id="impImportBtn" style="display:none;">Import 0 Rounds</button>
+        <button type="button" class="modal-close" id="cancelImport">Cancel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2372,8 +2493,17 @@
     return rows;
   }
 
-  // Verify: the player's name AND their exact score must appear on the same row of the linked sheet.
+  // Verify: the player's name AND their exact score must appear on the same row of the results.
+  // Tries the server function first (no browser CORS limits — works on any device with any
+  // public link, not just Google Sheets), then falls back to the in-browser Sheets check.
   async function verifyNameAndScore(playerName, expectedScore, url) {
+    try {
+      const r = await fetch(`/api/verify?url=${encodeURIComponent(url)}&name=${encodeURIComponent(playerName)}&score=${expectedScore}`);
+      if (r.ok) {
+        const j = await r.json();
+        if (j && typeof j.ok === 'boolean') return j;
+      }
+    } catch (e) { /* server function unavailable — fall back to client-side check */ }
     try {
       const sheetIdMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
       if (!sheetIdMatch) return { ok: false, reason: 'Not a Google Sheets link' };
@@ -2570,10 +2700,24 @@
   });
 
   // ===== LEADERBOARD =====
+  // Latest tryout score per player key ("isTryout" docs live in the same 'scores' collection).
+  function tryoutScoreMap() {
+    const map = {};
+    allScores.forEach(s => {
+      if (!s.isTryout) return;
+      const key = (s.playerName || '').trim().toLowerCase();
+      if (!key) return;
+      if (!map[key] || (s.createdAt || 0) > (map[key].createdAt || 0)) map[key] = s;
+    });
+    return map;
+  }
+
   function groupScores() {
     const byPlayer = {};
     const coachView = isCoach();
+    const tryouts = tryoutScoreMap();
     allScores.forEach(s => {
+      if (s.isTryout) return; // handled via tryoutScoreMap
       const key = (s.playerName || '').trim().toLowerCase();
       if (!key) return;
       if (!byPlayer[key]) byPlayer[key] = { name: (s.playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0, pendingCount: 0 };
@@ -2586,11 +2730,28 @@
         if (coachView) byPlayer[key].rounds.push(s);
       }
     });
+    // Players who have a tryout score but no summer rounds still belong on the board.
+    Object.keys(tryouts).forEach(key => {
+      if (!byPlayer[key]) byPlayer[key] = { name: (tryouts[key].playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0, pendingCount: 0 };
+    });
     let players = Object.values(byPlayer);
-    // Public leaderboard: only show players with at least one verified round.
+    players.forEach(p => {
+      const t = tryouts[p.name.trim().toLowerCase()];
+      p.tryout = t ? t.score : null;
+      p.tryoutId = t ? t.id : null;
+      p.final = t ? t.score + p.totalAdj : null;
+    });
+    // Public leaderboard: show players with a verified round or an official tryout score.
     // Coaches see everyone (including pending-only players) so they can manage.
-    if (!coachView) players = players.filter(p => p.verifiedCount > 0);
-    return players.sort((a, b) => a.totalAdj - b.totalAdj);
+    if (!coachView) players = players.filter(p => p.verifiedCount > 0 || p.tryout != null);
+    // Players with a final (tryout) score rank first, lowest final wins.
+    // Everyone else keeps the summer ranking by total strokes off.
+    return players.sort((a, b) => {
+      if (a.final != null && b.final != null) return a.final - b.final;
+      if (a.final != null) return -1;
+      if (b.final != null) return 1;
+      return a.totalAdj - b.totalAdj;
+    });
   }
 
   const DIFF_LABELS = { 1: 'Easy', 2: 'Mild', 3: 'Moderate', 4: 'Tough', 5: 'Brutal' };
@@ -2676,22 +2837,46 @@
       wrap.innerHTML = `<div class="lb-empty">${msg}</div>`;
       return;
     }
+    const anyTryout = players.some(p => p.final != null);
+    const lede = document.getElementById('leaderboardLede');
+    if (lede) lede.textContent = anyTryout
+      ? 'Ranked by final score: tryout round minus summer strokes off. Tap a player for details.'
+      : 'Ranked by total strokes off. Tap a player to see their rounds.';
     wrap.innerHTML = players.map((p, i) => {
       const isOwnPlayer = currentUser && p.name.toLowerCase() === currentUser.playerName.toLowerCase();
       const canManage = isOwnPlayer || isCoach();
-      const roundsHtml = p.rounds
+      const tryoutRow = p.tryout != null ? `
+        <div class="round tryout-round">
+          <div class="round-info">
+            <div class="round-event"><span class="event-name">Tryout · Day 1 — Indian Creek GC</span></div>
+            <div class="round-sub"><span class="badge verified">Official</span></div>
+          </div>
+          <div class="round-stats">
+            <div class="stat"><div class="stat-label">Tryout</div><div class="stat-value">${p.tryout}</div></div>
+            <div class="stat"><div class="stat-label">Adj</div><div class="stat-value adj">${p.totalAdj}</div></div>
+            <div class="stat"><div class="stat-label">Final</div><div class="stat-value adj">${p.final}</div></div>
+            ${isCoach() ? `<div class="round-actions"><button class="icon-action" data-del="${escapeHtml(p.tryoutId)}" title="Remove tryout score" aria-label="Remove tryout score"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div>` : ''}
+          </div>
+        </div>` : '';
+      const roundsHtml = tryoutRow + p.rounds
         .slice().sort((a,b) => (a.date||'').localeCompare(b.date||''))
         .map(r => roundHtml(r, canManage))
         .join('');
+      const meta = p.tryout != null
+        ? `Tryout ${p.tryout} · Adj ${p.totalAdj} · ${p.verifiedCount} verified${p.pendingCount ? ` · ${p.pendingCount} pending` : ''}`
+        : `${p.verifiedCount} verified · ${p.pendingCount} pending${anyTryout ? ' · no tryout score yet' : ''}`;
+      const totalHtml = p.final != null
+        ? `<div class="lb-total-wrap"><div class="lb-total" data-target="${p.final}">${p.final}</div><div class="lb-total-label">Final</div></div>`
+        : `<div class="lb-total" data-target="${p.totalAdj}">${p.totalAdj}</div>`;
       return `
         <div class="lb-item ${i === 0 ? 'first' : ''}">
           <div class="lb-row" data-toggle>
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-info">
               <div class="lb-name">${escapeHtml(p.name)}</div>
-              <div class="lb-meta">${p.verifiedCount} verified · ${p.pendingCount} pending</div>
+              <div class="lb-meta">${meta}</div>
             </div>
-            <div class="lb-total" data-target="${p.totalAdj}">${p.totalAdj}</div>
+            ${totalHtml}
             <div class="lb-chevron">›</div>
           </div>
           <div class="lb-rounds">${roundsHtml}</div>
@@ -2778,6 +2963,244 @@
     if (manual) alert(`Re-verification done. ${promoted} round(s) newly verified.`);
   }
 
+  // ===== TRYOUT SCORE ENTRY (coach) =====
+  // Tryout scores are stored in the same 'scores' collection with isTryout: true,
+  // one doc per player (latest createdAt wins). Verified by definition — the coach entered it.
+  async function saveTryoutScore(name, existing, score) {
+    if (!isCoach()) return false;
+    if (isNaN(score) || score < 50 || score > 200) { alert('Enter a score between 50 and 200.'); return false; }
+    try {
+      if (existing) {
+        await updateDoc(doc(db, 'scores', existing.id), { score, editedAt: Date.now(), editedBy: currentUser.email });
+      } else {
+        await addDoc(collection(db, 'scores'), {
+          ownerUid: currentUser.uid,
+          playerName: name,
+          isTryout: true,
+          tournament: 'Tryout · Day 1 — Indian Creek GC',
+          date: new Date().toISOString().split('T')[0],
+          score,
+          verifyUrl: '',
+          courseRating: null,
+          difficulty: null,
+          verified: true,
+          verifyNote: '',
+          verifiedByCoach: true,
+          verifiedBy: currentUser.email,
+          verifiedAt: Date.now(),
+          submittedBy: currentUser.email,
+          submittedRole: 'Coach',
+          createdAt: Date.now()
+        });
+      }
+      return true;
+    } catch (e) {
+      alert('Could not save that score. Please try again.');
+      return false;
+    }
+  }
+
+  function tryoutEntryHtml() {
+    const tryouts = tryoutScoreMap();
+    // Roster = everyone signed up for tryouts + everyone with a submitted round + anyone with a tryout score.
+    const rosterMap = {};
+    allSignups.forEach(s => { const k = (s.playerName || '').trim().toLowerCase(); if (k) rosterMap[k] = (s.playerName || '').trim(); });
+    allScores.forEach(s => { const k = (s.playerName || '').trim().toLowerCase(); if (k && !rosterMap[k]) rosterMap[k] = (s.playerName || '').trim(); });
+    const adjByKey = {};
+    allScores.forEach(s => {
+      if (s.isTryout || !s.verified) return;
+      const k = (s.playerName || '').trim().toLowerCase();
+      if (!k) return;
+      adjByKey[k] = (adjByKey[k] || 0) + getAdj(s.score);
+    });
+    const roster = Object.keys(rosterMap)
+      .map(key => ({ key, name: rosterMap[key], existing: tryouts[key] || null, adj: adjByKey[key] || 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const rows = roster.map(p => `
+      <div class="ten-row">
+        <span class="ten-name">${escapeHtml(p.name)}<span class="ten-adj">${p.adj ? `${p.adj} strokes off earned` : 'no summer rounds'}${p.existing ? ` · Final: ${p.existing.score + p.adj}` : ''}</span></span>
+        <input type="number" min="50" max="200" inputmode="numeric" placeholder="—" value="${p.existing ? p.existing.score : ''}" data-ten-key="${escapeHtml(p.key)}" />
+        <button class="ten-save" data-ten-save="${escapeHtml(p.key)}" data-ten-name="${escapeHtml(p.name)}">${p.existing ? 'Update' : 'Save'}</button>
+      </div>`).join('');
+    return `
+      <div class="group-header">Tryout Scores · Day 1 (Indian Creek GC)</div>
+      <div class="group" id="tryoutEntryGroup">
+        <div class="tryout-entry-hint">Enter each player's 18-hole tryout score. Summer deductions are applied automatically and the leaderboard re-ranks by final score.</div>
+        ${rows || '<div class="tryout-entry-hint">No players yet — they appear here once they sign up or submit a round.</div>'}
+        <div class="ten-add-row">
+          <input type="text" id="tenAddName" placeholder="Add player (walk-up)" />
+          <input type="number" id="tenAddScore" min="50" max="200" inputmode="numeric" placeholder="Score" />
+          <button class="ten-save" id="tenAddBtn">Add</button>
+        </div>
+      </div>`;
+  }
+
+  function wireTryoutEntry(wrap) {
+    const tryouts = tryoutScoreMap();
+    wrap.querySelectorAll('[data-ten-save]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.tenSave;
+        const input = wrap.querySelector(`[data-ten-key="${CSS.escape(key)}"]`);
+        const score = parseInt(input.value, 10);
+        btn.disabled = true;
+        const ok = await saveTryoutScore(btn.dataset.tenName, tryouts[key] || null, score);
+        btn.disabled = false;
+        if (ok) { btn.textContent = 'Saved ✓'; btn.classList.add('saved'); }
+      });
+    });
+    const addBtn = document.getElementById('tenAddBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', async () => {
+        const name = (document.getElementById('tenAddName').value || '').trim();
+        const score = parseInt(document.getElementById('tenAddScore').value, 10);
+        if (!name) { alert('Please enter the player name.'); return; }
+        const existing = tryoutScoreMap()[name.toLowerCase()] || null;
+        addBtn.disabled = true;
+        const ok = await saveTryoutScore(name, existing, score);
+        addBtn.disabled = false;
+        if (ok) { document.getElementById('tenAddName').value = ''; document.getElementById('tenAddScore').value = ''; }
+      });
+    }
+  }
+
+  // ===== IMPORT TOURNAMENT RESULTS (coach) =====
+  // Coach pastes leaderboard text copied from TX HS Golf / iWanamaker (or anywhere).
+  // We match roster names, preview with editable scores, then import as verified rounds.
+  let impMatches = [];
+
+  function rosterNames() {
+    const map = {};
+    allSignups.forEach(s => { const k = (s.playerName || '').trim().toLowerCase(); if (k) map[k] = (s.playerName || '').trim(); });
+    allScores.forEach(s => { const k = (s.playerName || '').trim().toLowerCase(); if (k && !map[k]) map[k] = (s.playerName || '').trim(); });
+    return map;
+  }
+
+  function parseImportText(text) {
+    const roster = rosterNames();
+    const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+    const results = [];
+    Object.keys(roster).forEach(key => {
+      const parts = key.split(/\s+/);
+      const first = parts[0];
+      const last = parts[parts.length - 1];
+      let line = null, fuzzy = false;
+      // Prefer exact forms; fall back to bare last name (flagged for review).
+      line = lines.find(l => {
+        const ll = l.toLowerCase();
+        return ll.includes(key) || (parts.length > 1 && (ll.includes(`${last}, ${first}`) || ll.includes(`${last},${first}`)));
+      });
+      if (!line && parts.length > 1) {
+        line = lines.find(l => l.toLowerCase().includes(last));
+        if (line) fuzzy = true;
+      }
+      if (!line) return;
+      const nums = (line.match(/\d+/g) || []).map(Number).filter(n => n >= 55 && n <= 150);
+      if (!nums.length) return;
+      // Totals come last on leaderboard rows; single-round total is the best default.
+      results.push({ key, name: roster[key], score: nums[nums.length - 1], nums, fuzzy, line: line.slice(0, 80) });
+    });
+    return results;
+  }
+
+  function renderImportPreview() {
+    const wrap = document.getElementById('impPreview');
+    const importBtn = document.getElementById('impImportBtn');
+    if (!impMatches.length) {
+      wrap.innerHTML = '<div class="imp-empty">No roster players found in the pasted text. Check the paste and try again.</div>';
+      importBtn.style.display = 'none';
+      return;
+    }
+    wrap.innerHTML = impMatches.map((m, i) => `
+      <div class="imp-row">
+        <input type="checkbox" data-imp-check="${i}" ${m.fuzzy ? '' : 'checked'} />
+        <span class="imp-name">${escapeHtml(m.name)}
+          <span class="imp-detail">${m.fuzzy ? '⚠ last-name match only — confirm it\'s them · ' : ''}numbers found: ${m.nums.join(', ')} · "${escapeHtml(m.line)}"</span>
+        </span>
+        <input type="number" min="55" max="150" value="${m.score}" data-imp-score="${i}" />
+      </div>`).join('');
+    const updateCount = () => {
+      const n = wrap.querySelectorAll('[data-imp-check]:checked').length;
+      importBtn.textContent = `Import ${n} Round${n === 1 ? '' : 's'}`;
+      importBtn.style.display = n ? '' : 'none';
+    };
+    wrap.querySelectorAll('[data-imp-check]').forEach(c => c.addEventListener('change', updateCount));
+    updateCount();
+  }
+
+  document.getElementById('cancelImport').addEventListener('click', () => {
+    document.getElementById('importModal').classList.remove('open');
+  });
+
+  document.getElementById('impParseBtn').addEventListener('click', () => {
+    const text = document.getElementById('impText').value;
+    if (!text.trim()) { alert('Paste the leaderboard text first.'); return; }
+    if (!document.getElementById('impTournament').value.trim()) {
+      // Default event name to the first pasted line.
+      document.getElementById('impTournament').value = text.split(/\n/).map(l => l.trim()).filter(Boolean)[0].slice(0, 60);
+    }
+    impMatches = parseImportText(text);
+    renderImportPreview();
+  });
+
+  document.getElementById('impImportBtn').addEventListener('click', async () => {
+    if (!isCoach()) return;
+    const tournament = document.getElementById('impTournament').value.trim() || 'Imported Tournament';
+    const date = document.getElementById('impDate').value || new Date().toISOString().split('T')[0];
+    const wrap = document.getElementById('impPreview');
+    const btn = document.getElementById('impImportBtn');
+    const picks = [];
+    wrap.querySelectorAll('[data-imp-check]:checked').forEach(c => {
+      const i = parseInt(c.dataset.impCheck, 10);
+      const scoreEl = wrap.querySelector(`[data-imp-score="${i}"]`);
+      const score = parseInt(scoreEl.value, 10);
+      if (!isNaN(score) && score >= 55 && score <= 150) picks.push({ ...impMatches[i], score });
+    });
+    if (!picks.length) return;
+    btn.disabled = true; btn.textContent = 'Importing…';
+    let added = 0, skipped = 0;
+    for (const p of picks) {
+      // Skip exact duplicates (same player, tournament, and score).
+      const dup = allScores.some(s => !s.isTryout
+        && (s.playerName || '').trim().toLowerCase() === p.key
+        && s.score === p.score
+        && (s.tournament || '') === tournament);
+      if (dup) { skipped++; continue; }
+      try {
+        await addDoc(collection(db, 'scores'), {
+          ownerUid: currentUser.uid,
+          playerName: p.name,
+          tournament, date,
+          score: p.score,
+          verifyUrl: '',
+          courseRating: null,
+          difficulty: null,
+          verified: true,
+          verifyNote: '',
+          verifiedByCoach: true,
+          verifiedBy: currentUser.email,
+          verifiedAt: Date.now(),
+          submittedBy: currentUser.email,
+          submittedRole: 'Coach',
+          createdAt: Date.now()
+        });
+        added++;
+      } catch (e) { skipped++; }
+    }
+    btn.disabled = false;
+    document.getElementById('importModal').classList.remove('open');
+    document.getElementById('impText').value = '';
+    document.getElementById('impPreview').innerHTML = '';
+    impMatches = [];
+    alert(`Imported ${added} round${added === 1 ? '' : 's'} as verified.${skipped ? ` Skipped ${skipped} (duplicates or errors).` : ''}`);
+  });
+
+  function openImportModal() {
+    if (!isCoach()) return;
+    document.getElementById('impDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('impImportBtn').style.display = 'none';
+    document.getElementById('importModal').classList.add('open');
+  }
+
   // ===== MY SCORES =====
   function renderMyScores() {
     const wrap = document.getElementById('myScoresContent');
@@ -2796,11 +3219,19 @@
     }
     if (isCoach()) {
       const totalSignups = allSignups.length;
+      // Preserve half-typed tryout scores + focus across realtime re-renders.
+      const draftVals = {};
+      let focusedKey = null;
+      wrap.querySelectorAll('[data-ten-key]').forEach(i => {
+        if (i.value !== '') draftVals[i.dataset.tenKey] = i.value;
+        if (document.activeElement === i) focusedKey = i.dataset.tenKey;
+      });
       wrap.innerHTML = `
         <div class="coach-dash-card">
           <h3>Coach Dashboard</h3>
           <p>Signed in as <strong>${escapeHtml(currentUser.playerName)}</strong> · You have full edit access across all scores and tryout signups.</p>
         </div>
+        ${tryoutEntryHtml()}
         <div class="group-header">At a Glance</div>
         <div class="group">
           <div class="row"><span class="label">Tryout signups</span><span class="value">${totalSignups} / 40</span></div>
@@ -2815,10 +3246,13 @@
         </div>
         <div class="group-header">Manage</div>
         <div class="group">
+          <a class="link-row" id="openImportBtn"><span>Import tournament results (paste from TX HS Golf / iWanamaker)</span><span class="arrow">→</span></a>
           <a class="link-row" data-go-tab="leaderboard"><span>Edit any player's scores</span><span class="arrow">→</span></a>
           <a class="link-row" data-go-tab="tryouts"><span>Manage tryout signup list</span><span class="arrow">→</span></a>
         </div>
       `;
+      const impBtn = document.getElementById('openImportBtn');
+      if (impBtn) { impBtn.style.cursor = 'pointer'; impBtn.addEventListener('click', (e) => { e.preventDefault(); openImportModal(); }); }
       wrap.querySelectorAll('[data-go-tab]').forEach(a => {
         a.style.cursor = 'pointer';
         a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goTab); });
@@ -2834,9 +3268,18 @@
       if (Date.now() - lastTs > 24 * 60 * 60 * 1000) {
         setTimeout(() => reverifyAllPending(false), 400);
       }
+      // Restore drafts typed before the realtime re-render (only where nothing saved yet,
+      // or the input the coach was actively editing), then re-focus it.
+      wrap.querySelectorAll('[data-ten-key]').forEach(i => {
+        const k = i.dataset.tenKey;
+        if (draftVals[k] != null && (i.value === '' || k === focusedKey)) i.value = draftVals[k];
+        if (k === focusedKey) { i.focus(); i.select(); }
+      });
+      wireTryoutEntry(wrap);
       return;
     }
-    const allMyScores = allScores.filter(s => (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
+    const myTryout = tryoutScoreMap()[currentUser.playerName.toLowerCase()] || null;
+    const allMyScores = allScores.filter(s => !s.isTryout && (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
     const verifiedRounds = allMyScores.filter(s => s.verified);
     const pendingCount = allMyScores.length - verifiedRounds.length;
     const totalAdj = verifiedRounds.reduce((sum, s) => sum + getAdj(s.score), 0);
@@ -2859,6 +3302,13 @@
           <div class="small">Total Strokes Off</div>
         </div>
       </div>
+      ${myTryout ? `
+      <div class="group-header">Tryout Result</div>
+      <div class="group">
+        <div class="row"><span class="label">Day 1 · Indian Creek GC</span><span class="value">${myTryout.score}</span></div>
+        <div class="row"><span class="label">Summer strokes off</span><span class="value">${totalAdj}</span></div>
+        <div class="row feature"><span class="label">Final tryout score</span><span class="value">${myTryout.score + totalAdj}</span></div>
+      </div>` : ''}
       <div class="actions">
         <button class="primary" id="openSubmit">Submit a Round</button>
       </div>
@@ -3079,6 +3529,7 @@
   onSnapshot(collection(db, 'tryoutSignups'), (snap) => {
     allSignups = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderTryouts();
+    renderMyScores(); // coach dashboard roster depends on signups
   }, (err) => { console.warn('signups listener error', err); });
 
   // ===== INIT =====
