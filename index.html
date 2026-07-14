@@ -1370,12 +1370,24 @@
   .tryout-entry-hint { padding: 14px 20px 4px; font-size: 13px; color: var(--muted); }
   .ten-row {
     display: grid;
-    grid-template-columns: 1fr 90px 84px;
+    grid-template-columns: 1fr 84px 76px 28px;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 10px 20px;
     border-bottom: 1px solid var(--line);
   }
+  .ten-clear {
+    width: 28px; height: 28px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+  }
+  .ten-clear:hover { background: var(--surface-2); color: #e5484d; }
   .ten-row:last-child { border-bottom: none; }
   .ten-name { font-size: 15px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ten-adj { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
@@ -1406,7 +1418,7 @@
   .ten-save:hover { filter: brightness(1.1); }
   .ten-save:disabled { opacity: 0.6; cursor: default; }
   .ten-save.saved { background: var(--good, #16a34a); }
-  .ten-add-row { display: grid; grid-template-columns: 1fr 90px 84px; gap: 10px; padding: 14px 20px; }
+  .ten-add-row { display: grid; grid-template-columns: 1fr 84px 76px 28px; gap: 8px; padding: 14px 20px; }
   .ten-add-row input[type="text"] { text-align: left; font-weight: 600; }
 
   /* IMPORT TOURNAMENT MODAL */
@@ -3025,6 +3037,7 @@
         <span class="ten-name">${escapeHtml(p.name)}<span class="ten-adj">${p.adj ? `${p.adj} strokes off earned` : 'no summer rounds'}${p.existing ? ` · Final: ${p.existing.score + p.adj}` : ''}</span></span>
         <input type="number" min="50" max="200" inputmode="numeric" placeholder="—" value="${p.existing ? p.existing.score : ''}" data-ten-key="${escapeHtml(p.key)}" />
         <button class="ten-save" data-ten-save="${escapeHtml(p.key)}" data-ten-name="${escapeHtml(p.name)}">${p.existing ? 'Update' : 'Save'}</button>
+        ${p.existing ? `<button class="ten-clear" data-ten-clear="${escapeHtml(p.key)}" title="Remove tryout score" aria-label="Remove tryout score">✕</button>` : '<span></span>'}
       </div>`).join('');
     return `
       <div class="group-header">Tryout Scores · Day 1 (Indian Creek GC)</div>
@@ -3035,6 +3048,7 @@
           <input type="text" id="tenAddName" placeholder="Add player (walk-up)" />
           <input type="number" id="tenAddScore" min="50" max="200" inputmode="numeric" placeholder="Score" />
           <button class="ten-save" id="tenAddBtn">Add</button>
+          <span></span>
         </div>
       </div>`;
   }
@@ -3050,6 +3064,16 @@
         const ok = await saveTryoutScore(btn.dataset.tenName, tryouts[key] || null, score);
         btn.disabled = false;
         if (ok) { btn.textContent = 'Saved ✓'; btn.classList.add('saved'); }
+      });
+    });
+    wrap.querySelectorAll('[data-ten-clear]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.tenClear;
+        const existing = tryoutScoreMap()[key];
+        if (!existing || !isCoach()) return;
+        if (!confirm(`Remove the tryout score for ${existing.playerName}?`)) return;
+        try { await deleteDoc(doc(db, 'scores', existing.id)); }
+        catch (e) { alert('Could not remove that score. Please try again.'); }
       });
     });
     const addBtn = document.getElementById('tenAddBtn');
