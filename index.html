@@ -2837,6 +2837,10 @@
       wrap.innerHTML = `<div class="lb-empty">${msg}</div>`;
       return;
     }
+    // Keep expanded players open across realtime re-renders (e.g. after a verify toggle),
+    // so the coach can work through a player's rounds without re-opening them every time.
+    const expandedKeys = new Set();
+    wrap.querySelectorAll('.lb-item.expanded .lb-name').forEach(n => expandedKeys.add(n.textContent.trim().toLowerCase()));
     const anyTryout = players.some(p => p.final != null);
     const lede = document.getElementById('leaderboardLede');
     if (lede) lede.textContent = anyTryout
@@ -2869,7 +2873,7 @@
         ? `<div class="lb-total-wrap"><div class="lb-total" data-target="${p.final}">${p.final}</div><div class="lb-total-label">Final</div></div>`
         : `<div class="lb-total" data-target="${p.totalAdj}">${p.totalAdj}</div>`;
       return `
-        <div class="lb-item ${i === 0 ? 'first' : ''}">
+        <div class="lb-item ${i === 0 ? 'first' : ''} ${expandedKeys.has(p.name.trim().toLowerCase()) ? 'expanded' : ''}">
           <div class="lb-row" data-toggle>
             <div class="lb-rank">${i + 1}</div>
             <div class="lb-info">
