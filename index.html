@@ -1852,19 +1852,25 @@
       <div class="row"><span class="label">Day 2</span><span class="value">Skills evaluation at PGA <small>The Ronny (FISD practice area) · 3–5 PM · Putting · Chipping · Short game</small></span></div>
     </div>
 
-    <div class="group-header">Day 2 · Skills Stations (The Ronny)</div>
+    <div class="group-header">Day 2 · Putting Stations (out of 10)</div>
     <div class="group">
-      <div class="row"><span class="label">Putting · 3 ft</span><span class="value">10 putts around the hole <small>Partner counts your makes</small></span></div>
-      <div class="row"><span class="label">Putting · 5 ft</span><span class="value">10 putts · 5 spots × 2</span></div>
-      <div class="row"><span class="label">Putting · 10 ft</span><span class="value">10 putts · varied lines</span></div>
-      <div class="row"><span class="label">Chipping</span><span class="value">10 chips · inside 3 ft counts <small>Holed counts too</small></span></div>
-      <div class="row"><span class="label">Up &amp; Down</span><span class="value">5 balls · chip + putt, hole out in 2</span></div>
-      <div class="row"><span class="label">Wedge targets</span><span class="value">10 shots · 50 / 75 / 100 yds <small>Inside the marked zone counts</small></span></div>
+      <div class="row"><span class="label">3-footers</span><span class="value">10 putts around the hole <small>Partner counts your makes</small></span></div>
+      <div class="row"><span class="label">6-footers</span><span class="value">10 putts · varied spots</span></div>
+      <div class="row"><span class="label">10-footers</span><span class="value">10 putts · varied lines</span></div>
+      <div class="row"><span class="label">25-foot lag</span><span class="value">10 putts · inside 3 ft counts <small>Holed counts too</small></span></div>
+    </div>
+
+    <div class="group-header">Day 2 · Chipping Stations (out of 5)</div>
+    <div class="group">
+      <div class="row"><span class="label">Bunker</span><span class="value">5 shots · inside 6 ft counts</span></div>
+      <div class="row"><span class="label">20-yard chip</span><span class="value">5 chips · inside 6 ft counts</span></div>
+      <div class="row"><span class="label">Up &amp; down · 20 yds</span><span class="value">5 balls · chip + putt, hole out in 2</span></div>
+      <div class="row"><span class="label">Up &amp; down · fringe</span><span class="value">5 balls · barely off the green, hole out in 2</span></div>
     </div>
 
     <div class="summer-card">
       <h4>How Day 2 works</h4>
-      <p>You'll be paired with another player and rotate through three stations — putting green, chipping green, and range — in ~30-minute blocks. Your partner counts every attempt, you count theirs. Right after each station, log your makes in the My Scores tab. Your make percentages appear next to your tryout score on the leaderboard.</p>
+      <p>You'll be paired with another player and rotate through 8 stations — 4 on the putting green, 4 on the chipping green. Your partner counts every attempt, you count theirs. Log your makes in the My Scores tab as you finish each station. Your make percentages appear next to your tryout score on the leaderboard.</p>
     </div>
 
     <div class="group-header">Cost</div>
@@ -3316,12 +3322,14 @@
   // ===== DAY 2 SKILLS EVALUATION =====
   // Skills docs live in the 'scores' collection with isSkills: true — one doc per player.
   const SKILL_STATIONS = [
-    { id: 'putt3',  label: '3-Foot Putts',       short: '3ft',   att: 10 },
-    { id: 'putt5',  label: '5-Foot Putts',       short: '5ft',   att: 10 },
-    { id: 'putt10', label: '10-Foot Putts',      short: '10ft',  att: 10 },
-    { id: 'chip',   label: 'Chips (inside 3 ft)', short: 'Chip',  att: 10 },
-    { id: 'updown', label: 'Up & Downs',          short: 'U&D',   att: 5 },
-    { id: 'wedge',  label: 'Wedge Targets',       short: 'Wedge', att: 10 },
+    { id: 'putt3',   label: '3-Foot Putts',                 short: '3ft',    att: 10 },
+    { id: 'putt6',   label: '6-Foot Putts',                 short: '6ft',    att: 10 },
+    { id: 'putt10',  label: '10-Foot Putts',                short: '10ft',   att: 10 },
+    { id: 'lag25',   label: '25-Foot Lag (inside 3 ft)',    short: 'Lag',    att: 10 },
+    { id: 'bunker',  label: 'Bunker (inside 6 ft)',         short: 'Bunker', att: 5 },
+    { id: 'chip20',  label: '20-Yard Chip (inside 6 ft)',   short: '20yd',   att: 5 },
+    { id: 'updown20', label: 'Up & Down · 20 yards',        short: 'U&D 20', att: 5 },
+    { id: 'updownfringe', label: 'Up & Down · off the green', short: 'U&D Fr', att: 5 },
   ];
 
   let coachSkillsSel = '';
