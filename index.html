@@ -1421,6 +1421,55 @@
   .ten-add-row { display: grid; grid-template-columns: 1fr 84px 76px 28px; gap: 8px; padding: 14px 20px; }
   .ten-add-row input[type="text"] { text-align: left; font-weight: 600; }
 
+  /* DAY 2 SKILLS */
+  .sk-row {
+    display: grid;
+    grid-template-columns: 1fr 64px 24px 64px;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .sk-row:last-child { border-bottom: none; }
+  .sk-label { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .sk-of { font-size: 12px; color: var(--muted); text-align: center; }
+  .sk-row input {
+    padding: 8px 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .sk-row input:focus { outline: none; border-color: var(--accent); }
+  .sk-summary { padding: 8px 0 4px; font-size: 13px; color: var(--muted); }
+  .sk-summary strong { color: var(--ink); }
+  .skill-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .skill-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 8px;
+  }
+  .skill-chip strong { color: var(--ink); }
+  #coachSkillsPlayer {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 8px 0;
+  }
+  .round.skills-round { background: var(--surface-2); border-left: 3px solid var(--gold); }
+
   /* IMPORT TOURNAMENT MODAL */
   #impText {
     width: 100%;
@@ -1801,6 +1850,21 @@
     <div class="group">
       <div class="row"><span class="label">Day 1</span><span class="value">18 holes at Indian Creek GC (Creeks Course) <small>Walking</small></span></div>
       <div class="row"><span class="label">Day 2</span><span class="value">Skills evaluation at PGA <small>The Ronny (FISD practice area) · 3–5 PM · Putting · Chipping · Short game</small></span></div>
+    </div>
+
+    <div class="group-header">Day 2 · Skills Stations (The Ronny)</div>
+    <div class="group">
+      <div class="row"><span class="label">Putting · 3 ft</span><span class="value">10 putts around the hole <small>Partner counts your makes</small></span></div>
+      <div class="row"><span class="label">Putting · 5 ft</span><span class="value">10 putts · 5 spots × 2</span></div>
+      <div class="row"><span class="label">Putting · 10 ft</span><span class="value">10 putts · varied lines</span></div>
+      <div class="row"><span class="label">Chipping</span><span class="value">10 chips · inside 3 ft counts <small>Holed counts too</small></span></div>
+      <div class="row"><span class="label">Up &amp; Down</span><span class="value">5 balls · chip + putt, hole out in 2</span></div>
+      <div class="row"><span class="label">Wedge targets</span><span class="value">10 shots · 50 / 75 / 100 yds <small>Inside the marked zone counts</small></span></div>
+    </div>
+
+    <div class="summer-card">
+      <h4>How Day 2 works</h4>
+      <p>You'll be paired with another player and rotate through three stations — putting green, chipping green, and range — in ~30-minute blocks. Your partner counts every attempt, you count theirs. Right after each station, log your makes in the My Scores tab. Your make percentages appear next to your tryout score on the leaderboard.</p>
     </div>
 
     <div class="group-header">Cost</div>
@@ -2729,7 +2793,7 @@
     const coachView = isCoach();
     const tryouts = tryoutScoreMap();
     allScores.forEach(s => {
-      if (s.isTryout) return; // handled via tryoutScoreMap
+      if (s.isTryout || s.isSkills) return; // handled via tryoutScoreMap / skillsMap
       const key = (s.playerName || '').trim().toLowerCase();
       if (!key) return;
       if (!byPlayer[key]) byPlayer[key] = { name: (s.playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0, pendingCount: 0 };
@@ -2746,16 +2810,25 @@
     Object.keys(tryouts).forEach(key => {
       if (!byPlayer[key]) byPlayer[key] = { name: (tryouts[key].playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0, pendingCount: 0 };
     });
+    const skillsDocs = skillsMap();
+    // Skills-only players (e.g. missed Day 1) still belong on the board.
+    Object.keys(skillsDocs).forEach(key => {
+      if (!byPlayer[key]) byPlayer[key] = { name: (skillsDocs[key].playerName || '').trim(), rounds: [], totalAdj: 0, verifiedCount: 0, pendingCount: 0 };
+    });
     let players = Object.values(byPlayer);
     players.forEach(p => {
-      const t = tryouts[p.name.trim().toLowerCase()];
+      const key = p.name.trim().toLowerCase();
+      const t = tryouts[key];
       p.tryout = t ? t.score : null;
       p.tryoutId = t ? t.id : null;
       p.final = t ? t.score + p.totalAdj : null;
+      const sk = skillsDocs[key];
+      p.skillsDoc = sk || null;
+      p.skillsPct = sk ? skillsPct(sk) : null;
     });
     // Public leaderboard: show players with a verified round or an official tryout score.
     // Coaches see everyone (including pending-only players) so they can manage.
-    if (!coachView) players = players.filter(p => p.verifiedCount > 0 || p.tryout != null);
+    if (!coachView) players = players.filter(p => p.verifiedCount > 0 || p.tryout != null || p.skillsDoc);
     // Players with a final (tryout) score rank first, lowest final wins.
     // Everyone else keeps the summer ranking by total strokes off.
     return players.sort((a, b) => {
@@ -2874,13 +2947,24 @@
             ${isCoach() ? `<div class="round-actions"><button class="icon-action" data-del="${escapeHtml(p.tryoutId)}" title="Remove tryout score" aria-label="Remove tryout score"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div>` : ''}
           </div>
         </div>` : '';
-      const roundsHtml = tryoutRow + p.rounds
+      const skillsRow = p.skillsDoc ? `
+        <div class="round skills-round">
+          <div class="round-info">
+            <div class="round-event"><span class="event-name">Day 2 Skills — The Ronny</span></div>
+            <div class="skill-chips">${skillChipsHtml(p.skillsDoc)}</div>
+          </div>
+          <div class="round-stats">
+            <div class="stat"><div class="stat-label">Overall</div><div class="stat-value adj">${p.skillsPct != null ? p.skillsPct + '%' : '—'}</div></div>
+          </div>
+        </div>` : '';
+      const roundsHtml = tryoutRow + skillsRow + p.rounds
         .slice().sort((a,b) => (a.date||'').localeCompare(b.date||''))
         .map(r => roundHtml(r, canManage))
         .join('');
+      const skillsMeta = p.skillsPct != null ? ` · Skills ${p.skillsPct}%` : '';
       const meta = p.tryout != null
-        ? `Tryout ${p.tryout} · Adj ${p.totalAdj} · ${p.verifiedCount} verified${p.pendingCount ? ` · ${p.pendingCount} pending` : ''}`
-        : `${p.verifiedCount} verified · ${p.pendingCount} pending${anyTryout ? ' · no tryout score yet' : ''}`;
+        ? `Tryout ${p.tryout} · Adj ${p.totalAdj}${skillsMeta} · ${p.verifiedCount} verified${p.pendingCount ? ` · ${p.pendingCount} pending` : ''}`
+        : `${p.verifiedCount} verified · ${p.pendingCount} pending${skillsMeta}${anyTryout ? ' · no tryout score yet' : ''}`;
       const totalHtml = p.final != null
         ? `<div class="lb-total-wrap"><div class="lb-total" data-target="${p.final}">${p.final}</div><div class="lb-total-label">Final</div></div>`
         : `<div class="lb-total" data-target="${p.totalAdj}">${p.totalAdj}</div>`;
@@ -3024,7 +3108,7 @@
     allScores.forEach(s => { const k = (s.playerName || '').trim().toLowerCase(); if (k && !rosterMap[k]) rosterMap[k] = (s.playerName || '').trim(); });
     const adjByKey = {};
     allScores.forEach(s => {
-      if (s.isTryout || !s.verified) return;
+      if (s.isTryout || s.isSkills || !s.verified) return;
       const k = (s.playerName || '').trim().toLowerCase();
       if (!k) return;
       adjByKey[k] = (adjByKey[k] || 0) + getAdj(s.score);
@@ -3229,6 +3313,127 @@
     document.getElementById('importModal').classList.add('open');
   }
 
+  // ===== DAY 2 SKILLS EVALUATION =====
+  // Skills docs live in the 'scores' collection with isSkills: true — one doc per player.
+  const SKILL_STATIONS = [
+    { id: 'putt3',  label: '3-Foot Putts',       short: '3ft',   att: 10 },
+    { id: 'putt5',  label: '5-Foot Putts',       short: '5ft',   att: 10 },
+    { id: 'putt10', label: '10-Foot Putts',      short: '10ft',  att: 10 },
+    { id: 'chip',   label: 'Chips (inside 3 ft)', short: 'Chip',  att: 10 },
+    { id: 'updown', label: 'Up & Downs',          short: 'U&D',   att: 5 },
+    { id: 'wedge',  label: 'Wedge Targets',       short: 'Wedge', att: 10 },
+  ];
+
+  let coachSkillsSel = '';
+  const skPrefix = k => 'co_' + k.replace(/[^a-z0-9]/g, '_');
+
+  function skillsMap() {
+    const map = {};
+    allScores.forEach(s => {
+      if (!s.isSkills) return;
+      const key = (s.playerName || '').trim().toLowerCase();
+      if (!key) return;
+      if (!map[key] || (s.updatedAt || s.createdAt || 0) > (map[key].updatedAt || map[key].createdAt || 0)) map[key] = s;
+    });
+    return map;
+  }
+
+  function skillsPct(sdoc) {
+    let made = 0, att = 0;
+    SKILL_STATIONS.forEach(st => {
+      const d = sdoc.skills && sdoc.skills[st.id];
+      if (d && d.att > 0) { made += d.made; att += d.att; }
+    });
+    return att > 0 ? Math.round((made / att) * 100) : null;
+  }
+
+  function skillChipsHtml(sdoc) {
+    return SKILL_STATIONS.map(st => {
+      const d = sdoc.skills && sdoc.skills[st.id];
+      if (!d || !d.att) return '';
+      return `<span class="skill-chip">${st.short} <strong>${Math.round((d.made / d.att) * 100)}%</strong></span>`;
+    }).filter(Boolean).join('');
+  }
+
+  function skillsFormHtml(prefix, existing) {
+    return SKILL_STATIONS.map(st => {
+      const d = existing && existing.skills ? existing.skills[st.id] : null;
+      return `
+        <div class="sk-row">
+          <span class="sk-label">${st.label}</span>
+          <input type="number" min="0" max="99" inputmode="numeric" placeholder="—" value="${d && d.att ? d.made : ''}" data-sk-input="${prefix}-${st.id}-made" aria-label="${st.label} makes" />
+          <span class="sk-of">of</span>
+          <input type="number" min="1" max="99" inputmode="numeric" value="${d && d.att ? d.att : st.att}" data-sk-input="${prefix}-${st.id}-att" aria-label="${st.label} attempts" />
+        </div>`;
+    }).join('');
+  }
+
+  function readSkillsForm(prefix) {
+    const skills = {};
+    let any = false;
+    for (const st of SKILL_STATIONS) {
+      const madeEl = document.querySelector(`[data-sk-input="${prefix}-${st.id}-made"]`);
+      const attEl = document.querySelector(`[data-sk-input="${prefix}-${st.id}-att"]`);
+      const made = parseInt(madeEl && madeEl.value, 10);
+      const att = parseInt(attEl && attEl.value, 10);
+      if (isNaN(made)) continue; // station not entered yet — skip
+      if (isNaN(att) || att < 1 || made < 0 || made > att) return { error: `${st.label}: makes must be between 0 and the number of attempts.` };
+      skills[st.id] = { made, att };
+      any = true;
+    }
+    if (!any) return { error: 'Enter at least one station before saving.' };
+    return { skills };
+  }
+
+  async function saveSkills(name, existing, skills) {
+    if (!currentUser) return false;
+    try {
+      if (existing) {
+        await updateDoc(doc(db, 'scores', existing.id), { skills, updatedAt: Date.now(), editedBy: currentUser.email });
+      } else {
+        await addDoc(collection(db, 'scores'), {
+          ownerUid: currentUser.uid,
+          playerName: name,
+          isSkills: true,
+          tournament: 'Tryout · Day 2 Skills — The Ronny',
+          date: new Date().toISOString().split('T')[0],
+          score: null,
+          skills,
+          verifyUrl: '',
+          courseRating: null,
+          difficulty: null,
+          verified: true,
+          verifyNote: '',
+          submittedBy: currentUser.email,
+          submittedRole: currentUser.role,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+      }
+      return true;
+    } catch (e) {
+      alert('Could not save skills. Please try again.');
+      return false;
+    }
+  }
+
+  function coachSkillsHtml() {
+    const roster = rosterNames();
+    const keys = Object.keys(roster).sort((a, b) => roster[a].localeCompare(roster[b]));
+    const opts = ['<option value="">Select a player…</option>']
+      .concat(keys.map(k => `<option value="${escapeHtml(k)}" ${k === coachSkillsSel ? 'selected' : ''}>${escapeHtml(roster[k])}</option>`))
+      .join('');
+    const existing = coachSkillsSel ? (skillsMap()[coachSkillsSel] || null) : null;
+    return `
+      <div class="group-header">Day 2 Skills Entry</div>
+      <div class="group" style="padding: 6px 20px 16px;">
+        <div class="sk-summary">Pick a player and enter their station results — same form the kids use on My Scores.</div>
+        <select id="coachSkillsPlayer">${opts}</select>
+        <div id="coachSkillsForm">${coachSkillsSel ? skillsFormHtml(skPrefix(coachSkillsSel), existing) : ''}</div>
+        ${coachSkillsSel ? '<button class="ten-save" id="coachSkillsSave" style="margin-top:10px; padding:10px 18px;">Save Skills</button>' : ''}
+      </div>`;
+  }
+
   // ===== MY SCORES =====
   function renderMyScores() {
     const wrap = document.getElementById('myScoresContent');
@@ -3245,6 +3450,34 @@
       if (btn) btn.addEventListener('click', () => openAuthModal('signin'));
       return;
     }
+    // Preserve half-typed skills inputs + focus across realtime re-renders.
+    const skDrafts = {};
+    let skFocused = null;
+    wrap.querySelectorAll('[data-sk-input]').forEach(i => {
+      if (i.value !== '') skDrafts[i.dataset.skInput] = i.value;
+      if (document.activeElement === i) skFocused = i.dataset.skInput;
+    });
+    const restoreSk = () => {
+      wrap.querySelectorAll('[data-sk-input]').forEach(i => {
+        const k = i.dataset.skInput;
+        if (skDrafts[k] != null) i.value = skDrafts[k];
+        if (k === skFocused) { i.focus(); i.select(); }
+      });
+    };
+    const wireSkillsSave = (btnId, prefix, getName) => {
+      const b = document.getElementById(btnId);
+      if (!b) return;
+      b.addEventListener('click', async () => {
+        const r = readSkillsForm(prefix);
+        if (r.error) { alert(r.error); return; }
+        const name = getName();
+        if (!name) return;
+        b.disabled = true;
+        const ok = await saveSkills(name, skillsMap()[name.toLowerCase()] || null, r.skills);
+        b.disabled = false;
+        if (ok) { b.textContent = 'Saved ✓'; b.classList.add('saved'); }
+      });
+    };
     if (isCoach()) {
       const totalSignups = allSignups.length;
       // Preserve half-typed tryout scores + focus across realtime re-renders.
@@ -3260,11 +3493,12 @@
           <p>Signed in as <strong>${escapeHtml(currentUser.playerName)}</strong> · You have full edit access across all scores and tryout signups.</p>
         </div>
         ${tryoutEntryHtml()}
+        ${coachSkillsHtml()}
         <div class="group-header">At a Glance</div>
         <div class="group">
           <div class="row"><span class="label">Tryout signups</span><span class="value">${totalSignups} / 40</span></div>
-          <div class="row"><span class="label">Total rounds submitted</span><span class="value">${allScores.length}</span></div>
-          <div class="row"><span class="label">Verified rounds</span><span class="value">${allScores.filter(s => s.verified).length}</span></div>
+          <div class="row"><span class="label">Total rounds submitted</span><span class="value">${allScores.filter(s => !s.isTryout && !s.isSkills).length}</span></div>
+          <div class="row"><span class="label">Verified rounds</span><span class="value">${allScores.filter(s => s.verified && !s.isTryout && !s.isSkills).length}</span></div>
           <div class="row"><span class="label">Pending review</span><span class="value">${allScores.filter(s => !s.verified).length}</span></div>
         </div>
         <div class="group-header">Verification</div>
@@ -3304,10 +3538,15 @@
         if (k === focusedKey) { i.focus(); i.select(); }
       });
       wireTryoutEntry(wrap);
+      restoreSk();
+      const csSel = document.getElementById('coachSkillsPlayer');
+      if (csSel) csSel.addEventListener('change', () => { coachSkillsSel = csSel.value; renderMyScores(); });
+      wireSkillsSave('coachSkillsSave', skPrefix(coachSkillsSel), () => rosterNames()[coachSkillsSel] || null);
       return;
     }
     const myTryout = tryoutScoreMap()[currentUser.playerName.toLowerCase()] || null;
-    const allMyScores = allScores.filter(s => !s.isTryout && (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
+    const mySkills = skillsMap()[currentUser.playerName.toLowerCase()] || null;
+    const allMyScores = allScores.filter(s => !s.isTryout && !s.isSkills && (s.playerName || '').toLowerCase() === currentUser.playerName.toLowerCase());
     const verifiedRounds = allMyScores.filter(s => s.verified);
     const pendingCount = allMyScores.length - verifiedRounds.length;
     const totalAdj = verifiedRounds.reduce((sum, s) => sum + getAdj(s.score), 0);
@@ -3337,6 +3576,14 @@
         <div class="row"><span class="label">Summer strokes off</span><span class="value">${totalAdj}</span></div>
         <div class="row feature"><span class="label">Final tryout score</span><span class="value">${myTryout.score + totalAdj}</span></div>
       </div>` : ''}
+      <div class="group-header">Day 2 Skills · The Ronny</div>
+      <div class="group" style="padding: 6px 20px 16px;">
+        <div class="sk-summary">${mySkills && skillsPct(mySkills) != null
+          ? `Overall make rate: <strong>${skillsPct(mySkills)}%</strong>`
+          : 'Log your station results during Day 2 — your partner counts, you enter.'}</div>
+        ${skillsFormHtml('my', mySkills)}
+        <button class="ten-save" id="mySkillsSave" style="margin-top:10px; padding:10px 18px;">Save Skills</button>
+      </div>
       <div class="actions">
         <button class="primary" id="openSubmit">Submit a Round</button>
       </div>
@@ -3346,6 +3593,8 @@
     `;
     document.getElementById('openSubmit').addEventListener('click', () => openSubmitModal());
     wireRoundActions(wrap);
+    restoreSk();
+    wireSkillsSave('mySkillsSave', 'my', () => currentUser.playerName);
     if (document.getElementById('panel-myscores').classList.contains('active')) setTimeout(animateMyScoresNumber, 100);
   }
 
