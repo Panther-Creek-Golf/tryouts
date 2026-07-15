@@ -3363,15 +3363,19 @@
     }).filter(Boolean).join('');
   }
 
-  function skillsFormHtml(prefix, existing) {
+  function skillsFormHtml(prefix, existing, lockAtt) {
     return SKILL_STATIONS.map(st => {
       const d = existing && existing.skills ? existing.skills[st.id] : null;
+      // lockAtt (player view): one tap, one number — attempts are fixed text.
+      const attCell = lockAtt
+        ? `<span class="sk-of" style="grid-column: span 2; text-align:left;">of ${d && d.att ? d.att : st.att}</span>`
+        : `<span class="sk-of">of</span>
+           <input type="number" min="1" max="99" inputmode="numeric" value="${d && d.att ? d.att : st.att}" data-sk-input="${prefix}-${st.id}-att" aria-label="${st.label} attempts" />`;
       return `
         <div class="sk-row">
           <span class="sk-label">${st.label}</span>
           <input type="number" min="0" max="99" inputmode="numeric" placeholder="—" value="${d && d.att ? d.made : ''}" data-sk-input="${prefix}-${st.id}-made" aria-label="${st.label} makes" />
-          <span class="sk-of">of</span>
-          <input type="number" min="1" max="99" inputmode="numeric" value="${d && d.att ? d.att : st.att}" data-sk-input="${prefix}-${st.id}-att" aria-label="${st.label} attempts" />
+          ${attCell}
         </div>`;
     }).join('');
   }
@@ -3383,7 +3387,8 @@
       const madeEl = document.querySelector(`[data-sk-input="${prefix}-${st.id}-made"]`);
       const attEl = document.querySelector(`[data-sk-input="${prefix}-${st.id}-att"]`);
       const made = parseInt(madeEl && madeEl.value, 10);
-      const att = parseInt(attEl && attEl.value, 10);
+      // No attempts input (locked player form) — use the station default or saved value.
+      const att = attEl ? parseInt(attEl.value, 10) : st.att;
       if (isNaN(made)) continue; // station not entered yet — skip
       if (isNaN(att) || att < 1 || made < 0 || made > att) return { error: `${st.label}: makes must be between 0 and the number of attempts.` };
       skills[st.id] = { made, att };
@@ -3589,7 +3594,7 @@
         <div class="sk-summary">${mySkills && skillsPct(mySkills) != null
           ? `Overall make rate: <strong>${skillsPct(mySkills)}%</strong>`
           : 'Log your station results during Day 2 — your partner counts, you enter.'}</div>
-        ${skillsFormHtml('my', mySkills)}
+        ${skillsFormHtml('my', mySkills, true)}
         <button class="ten-save" id="mySkillsSave" style="margin-top:10px; padding:10px 18px;">Save Skills</button>
       </div>
       <div class="actions">
